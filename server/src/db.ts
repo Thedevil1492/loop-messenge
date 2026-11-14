@@ -14,27 +14,34 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const { Pool } = pg;
 
 const databaseUrl = process.env.DATABASE_URL;
-const isPostgres = !!(databaseUrl && (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://')));
+let isPostgres = !!(databaseUrl && (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://')));
 
 let sqliteDb: DatabaseSync | null = null;
 let pgPool: pg.Pool | null = null;
+
+function initSqlite() {
+  if (!sqliteDb) {
+    console.log('[DB] Initializing local SQLite database (loop.db)...');
+    const dataDir = path.resolve(__dirname, '../data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const dbPath = path.join(dataDir, 'loop.db');
+    sqliteDb = new DatabaseSync(dbPath);
+    sqliteDb.exec('PRAGMA journal_mode = WAL;');
+    sqliteDb.exec('PRAGMA foreign_keys = ON;');
+  }
+}
 
 if (isPostgres) {
   console.log('[DB] Connecting to PostgreSQL (Supabase / Cloud Database)...');
   pgPool = new Pool({
     connectionString: databaseUrl,
-    ssl: databaseUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+    ssl: databaseUrl!.includes('localhost') ? false : { rejectUnauthorized: false },
+    connectionTimeoutMillis: 5000,
   });
 } else {
-  console.log('[DB] Using local SQLite database (loop.db)...');
-  const dataDir = path.resolve(__dirname, '../data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  const dbPath = path.join(dataDir, 'loop.db');
-  sqliteDb = new DatabaseSync(dbPath);
-  sqliteDb.exec('PRAGMA journal_mode = WAL;');
-  sqliteDb.exec('PRAGMA foreign_keys = ON;');
+  initSqlite();
 }
 
 function toPgSql(sql: string): string {
@@ -82,6 +89,22 @@ export const db = {
 };
 
 export async function initDatabase() {
+  if (isPostgres && pgPool) {
+    try {
+      await pgPool.query('SELECT 1');
+      console.log('[DB] PostgreSQL connection verified successfully.');
+    } catch (err) {
+      console.error('[DB] PostgreSQL connection failed (e.g. IPv6/ENETUNREACH). Falling back to SQLite:', err);
+      isPostgres = false;
+      db.isPostgres = false;
+      try {
+        await pgPool.end();
+      } catch {}
+      pgPool = null;
+      initSqlite();
+    }
+  }
+
   if (isPostgres) {
     await db.exec(`
       CREATE TABLE IF NOT EXISTS users (
