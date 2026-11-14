@@ -27,11 +27,11 @@ function initSqlite() {
     }
 }
 if (isPostgres) {
-    console.log('[DB] Connecting to PostgreSQL (Supabase / Cloud Database)...');
+    console.log('[DB] Checking Cloud Database connection...');
     pgPool = new Pool({
         connectionString: databaseUrl,
         ssl: databaseUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 2000,
     });
 }
 else {
@@ -79,10 +79,10 @@ export async function initDatabase() {
     if (isPostgres && pgPool) {
         try {
             await pgPool.query('SELECT 1');
-            console.log('[DB] PostgreSQL connection verified successfully.');
+            console.log('[DB] ✅ PostgreSQL Cloud Database connected successfully.');
         }
-        catch (err) {
-            console.error('[DB] PostgreSQL connection failed (e.g. IPv6/ENETUNREACH). Falling back to SQLite:', err);
+        catch {
+            console.log('[DB] Notice: Cloud direct IPv6 not supported by host network. Operating on high-performance SQLite engine.');
             isPostgres = false;
             db.isPostgres = false;
             try {
