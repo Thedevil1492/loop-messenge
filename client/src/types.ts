@@ -1,0 +1,49 @@
+export interface User {
+  id: string;
+  email: string;
+  display_name: string;
+  avatar_url: string;
+  bio: string;
+  is_online: number;
+  last_seen_at: number;
+  created_at: number;
+}
+
+export interface Chat {
+  id: string;
+  type: 'DIRECT' | 'GROUP';
+  name: string | null;
+  avatar_url: string;
+  description: string;
+  created_by: string;
+  created_at: number;
+  updated_at: number;
+  participants: User[];
+  last_message: Message | null;
+  unread_count: number;
+}
+
+export interface Message {
+  id: string;
+  chat_id: string;
+  sender_id: string;
+  sender_name?: string;
+  sender_avatar?: string;
+  parent_message_id?: string | null;
+  type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'AUDIO';
+  content: string;
+  media_url?: string | null;
+  media_mime_type?: string | null;
+  media_size?: number | null;
+  media_name?: string | null;
+  is_deleted: number;
+  created_at: number;
+  updated_at: number;
+  delivery_status?: 'SENT' | 'DELIVERED' | 'READ';
+  clientMessageId?: string;
+}
+
+export interface WsEvent<T = any> {
+  type: string;
+  payload: T;
+}
