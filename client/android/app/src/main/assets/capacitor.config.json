@@ -1,9 +1,9 @@
 {
-	"appId": "com.loop.messenger",
-	"appName": "Loop Messenger",
+	"appId": "com.loop.app",
+	"appName": "Loop",
 	"webDir": "../server/public",
 	"server": {
-		"url": "https://industrial-applications-healing-brick.trycloudflare.com",
+		"url": "https://loop-messenge.onrender.com",
 		"cleartext": true
 	}
 }
