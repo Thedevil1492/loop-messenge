@@ -5,6 +5,7 @@ import { DeliveryTicks } from '../UI/DeliveryTicks.js';
 import { NewChatModal } from './NewChatModal.js';
 import { NewGroupModal } from './NewGroupModal.js';
 import { CameraModal } from '../Camera/CameraModal.js';
+import { AdminModal } from '../Admin/AdminModal.js';
 import {
   Search,
   MessageSquarePlus,
@@ -12,6 +13,12 @@ import {
   Camera,
   X,
   Sparkles,
+  MoreVertical,
+  ShieldCheck,
+  Settings,
+  Sun,
+  Moon,
+  KeyRound,
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 
@@ -24,6 +31,8 @@ export const ChatList: React.FC = () => {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const currentUser = useStore((state) => state.currentUser);
   const chats = useStore((state) => state.chats);
@@ -31,6 +40,9 @@ export const ChatList: React.FC = () => {
   const setActiveChatId = useStore((state) => state.setActiveChatId);
   const presence = useStore((state) => state.presence);
   const typing = useStore((state) => state.typing);
+  const theme = useStore((state) => state.theme);
+  const toggleTheme = useStore((state) => state.toggleTheme);
+  const setActiveTab = useStore((state) => state.setActiveTab);
 
   const filteredChats = chats.filter((c) => {
     // 1. Text Search Filter
@@ -98,6 +110,83 @@ export const ChatList: React.FC = () => {
           >
             <MessageSquarePlus className="w-5 h-5" />
           </button>
+
+          {/* 3-Dots Menu Button */}
+          <div className="relative">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-obsidian-surface text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+              title="More Options"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {/* 3-Dots Dropdown Menu */}
+            {isMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-11 w-52 bg-white dark:bg-obsidian-card border border-slate-200 dark:border-obsidian-border rounded-2xl shadow-xl py-2 z-50 text-xs font-medium animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100 dark:divide-obsidian-border/50">
+                  <div className="pb-1.5">
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsAdminOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left font-bold"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-rose-500" />
+                      <span>Admin Command Center</span>
+                    </button>
+                  </div>
+
+                  <div className="py-1.5">
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsNewGroupOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-obsidian-surface transition text-left"
+                    >
+                      <Users className="w-4 h-4 text-zinc-400" />
+                      <span>New Group</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setActiveTab('SETTINGS');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-obsidian-surface transition text-left"
+                    >
+                      <Settings className="w-4 h-4 text-zinc-400" />
+                      <span>Settings</span>
+                    </button>
+                  </div>
+
+                  <div className="pt-1.5">
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        toggleTheme();
+                      }}
+                      className="w-full flex items-center justify-between px-3.5 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-obsidian-surface transition text-left"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        {theme === 'dark' ? (
+                          <Sun className="w-4 h-4 text-amber-500" />
+                        ) : (
+                          <Moon className="w-4 h-4 text-indigo-500" />
+                        )}
+                        <span>{theme === 'dark' ? 'Light Theme' : 'Dark Theme'}</span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -289,6 +378,12 @@ export const ChatList: React.FC = () => {
           isOpen={isCameraOpen}
           onClose={() => setIsCameraOpen(false)}
           mode="STORY"
+        />
+      )}
+      {isAdminOpen && (
+        <AdminModal
+          isOpen={isAdminOpen}
+          onClose={() => setIsAdminOpen(false)}
         />
       )}
     </div>

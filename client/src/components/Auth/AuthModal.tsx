@@ -119,7 +119,20 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in select-none">
-      <div className="w-full max-w-md bg-white dark:bg-obsidian-card border border-zinc-200 dark:border-obsidian-border rounded-3xl shadow-2xl p-6 md:p-8 overflow-hidden transition-all">
+      <div className="w-full max-w-md bg-white dark:bg-obsidian-card border border-zinc-200 dark:border-obsidian-border rounded-3xl shadow-2xl p-6 md:p-8 overflow-hidden transition-all relative">
+        {/* Top Right Admin Button */}
+        <div className="absolute top-4 right-4">
+          <button
+            type="button"
+            onClick={() => setIsAdminOpen(true)}
+            className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 px-2 py-1 rounded-lg bg-slate-100 dark:bg-obsidian-surface hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+            title="Open Admin Console"
+          >
+            <KeyRound className="w-3 h-3 text-rose-500" />
+            <span>Admin</span>
+          </button>
+        </div>
+
         {/* App Logo & Header */}
         <div className="text-center mb-6">
           <div

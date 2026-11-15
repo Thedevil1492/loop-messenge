@@ -167,19 +167,20 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Master Admin Panel Button (for Admin or via Secret Tap) */}
-        {(currentUser?.is_admin === 1 || tapCount >= 3) && (
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs transition border border-rose-500/20 shadow-xs cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4" />
-              <span>Master Admin Console</span>
-            </span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
+        {/* Master Admin Panel Button (Always visible & passcode protected) */}
+        <button
+          onClick={() => setIsAdminOpen(true)}
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs transition border border-rose-500/20 shadow-xs cursor-pointer"
+        >
+          <span className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-rose-500" />
+            <span>Master Admin Command Center</span>
+          </span>
+          <div className="flex items-center gap-1 text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold px-2 py-0.5 rounded-full">
+            <span>Passcode</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </button>
 
         {/* Log Out Button */}
         <button
