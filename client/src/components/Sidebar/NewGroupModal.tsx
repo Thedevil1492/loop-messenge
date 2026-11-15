@@ -3,7 +3,7 @@ import { api } from '../../services/api.js';
 import { useStore } from '../../store/useStore.js';
 import { Avatar } from '../UI/Avatar.js';
 import { Users, X, Check, Search } from 'lucide-react';
-import type { User } from '../../types.js';
+import type { SearchContactUser } from '../../types.js';
 
 interface NewGroupModalProps {
   isOpen: boolean;
@@ -14,7 +14,7 @@ export const NewGroupModal: React.FC<NewGroupModalProps> = ({ isOpen, onClose })
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [search, setSearch] = useState('');
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<SearchContactUser[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -172,7 +172,7 @@ export const NewGroupModal: React.FC<NewGroupModalProps> = ({ isOpen, onClose })
                           {u.display_name}
                         </p>
                         <p className="text-[10px] text-mint-600 dark:text-mint-400 truncate">
-                          {u.username || u.anon_tag || u.email}
+                          {u.username ? (u.username.startsWith('@') ? u.username : `@${u.username}`) : (u.anon_tag || '@user')}
                         </p>
                       </div>
                     </div>

@@ -2,37 +2,91 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { db } from '../db.js';
 import { requireAuth, type AuthenticatedRequest } from '../auth.js';
+import { broadcastToUser } from '../ws.js';
 import type { Chat, Message, User } from '../types.js';
 
 export const chatRouter = Router();
 
-// Search users to start new chat
+// Search users to start new chat - NEVER exposes all users unless searched!
+// NEVER returns email or phone to keep privacy complete!
 chatRouter.get('/users/search', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
   const currentUserId = req.user!.id;
   const q = String(req.query.q || '').trim();
 
-  let users: User[] = [];
-  if (q) {
-    const pattern = `%${q}%`;
-    users = await db.all<User>(
-      `SELECT id, email, display_name, avatar_url, bio, is_online, last_seen_at, created_at, anon_tag
-       FROM users
-       WHERE id != ? AND (display_name LIKE ? OR email LIKE ? OR anon_tag LIKE ?)
-       LIMIT 20`,
-      [currentUserId, pattern, pattern, pattern]
-    );
-  } else {
-    users = await db.all<User>(
-      `SELECT id, email, display_name, avatar_url, bio, is_online, last_seen_at, created_at, anon_tag
-       FROM users
-       WHERE id != ?
-       ORDER BY last_seen_at DESC
-       LIMIT 20`,
-      [currentUserId]
-    );
+  // If search query is empty or less than 2 characters, return empty list!
+  if (!q || q.length < 2) {
+    res.json({ users: [] });
+    return;
   }
 
-  res.json({ users });
+  const cleanQuery = q.replace(/^@/, '');
+  const pattern = `%${cleanQuery}%`;
+
+  // Search by username, anon_tag, or display_name ONLY - NO email, NO phone!
+  const foundUsers = await db.all<{
+    id: string;
+    display_name: string;
+    username: string | null;
+    anon_tag: string | null;
+    avatar_url: string;
+    bio: string;
+    is_online: number;
+    last_seen_at: number;
+    created_at: number;
+  }>(
+    `SELECT id, display_name, username, anon_tag, avatar_url, bio, is_online, last_seen_at, created_at
+     FROM users
+     WHERE id != ? AND (username LIKE ? OR anon_tag LIKE ? OR display_name LIKE ?)
+     LIMIT 20`,
+    [currentUserId, pattern, pattern, pattern]
+  );
+
+  // Check relationship for each user
+  const usersWithRelation = await Promise.all(
+    foundUsers.map(async (u) => {
+      // 1. Is there an existing direct chat?
+      const directChat = await db.get<{ id: string }>(
+        `SELECT c.id FROM chats c
+         JOIN chat_participants cp1 ON cp1.chat_id = c.id AND cp1.user_id = ?
+         JOIN chat_participants cp2 ON cp2.chat_id = c.id AND cp2.user_id = ?
+         WHERE c.type = 'DIRECT' LIMIT 1`,
+        [currentUserId, u.id]
+      );
+
+      if (directChat) {
+        return {
+          ...u,
+          relationship: 'CONNECTED',
+          chatId: directChat.id,
+        };
+      }
+
+      // 2. Is there a contact request between them?
+      const reqRow = await db.get<{ id: string; sender_id: string; receiver_id: string; status: string }>(
+        `SELECT id, sender_id, receiver_id, status FROM contact_requests
+         WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+         ORDER BY updated_at DESC LIMIT 1`,
+        [currentUserId, u.id, u.id, currentUserId]
+      );
+
+      if (reqRow) {
+        if (reqRow.status === 'ACCEPTED') {
+          return { ...u, relationship: 'CONNECTED' };
+        }
+        if (reqRow.status === 'PENDING') {
+          if (reqRow.sender_id === currentUserId) {
+            return { ...u, relationship: 'REQUEST_SENT', requestId: reqRow.id };
+          } else {
+            return { ...u, relationship: 'REQUEST_RECEIVED', requestId: reqRow.id };
+          }
+        }
+      }
+
+      return { ...u, relationship: 'NONE' };
+    })
+  );
+
+  res.json({ users: usersWithRelation });
 });
 
 // List all chats for current user
@@ -48,66 +102,66 @@ chatRouter.get('/chats', requireAuth, async (req: AuthenticatedRequest, res): Pr
     [currentUserId]
   );
 
-  const detailedChats: Chat[] = [];
-
-  for (const chat of chatRows) {
-    const participants = await db.all<User>(
-      `SELECT u.id, u.email, u.display_name, u.avatar_url, u.bio, u.is_online, u.last_seen_at, u.created_at, u.anon_tag
-       FROM users u
-       JOIN chat_participants cp ON cp.user_id = u.id
-       WHERE cp.chat_id = ?`,
-      [chat.id]
-    );
-
-    const lastMessage = (await db.get<Message>(
-      `SELECT m.*, u.display_name as sender_name, u.avatar_url as sender_avatar
-       FROM messages m
-       JOIN users u ON u.id = m.sender_id
-       WHERE m.chat_id = ?
-       ORDER BY m.created_at DESC
-       LIMIT 1`,
-      [chat.id]
-    )) || null;
-
-    if (lastMessage && lastMessage.sender_id === currentUserId) {
-      const receipts = await db.all<{ status: string }>(
-        'SELECT status FROM delivery_receipts WHERE message_id = ?',
-        [lastMessage.id]
+  const detailedChats = await Promise.all(
+    chatRows.map(async (chat) => {
+      const participants = await db.all<User>(
+        `SELECT u.id, u.display_name, u.username, u.avatar_url, u.bio, u.is_online, u.last_seen_at, u.created_at, u.anon_tag
+         FROM users u
+         JOIN chat_participants cp ON cp.user_id = u.id
+         WHERE cp.chat_id = ?`,
+        [chat.id]
       );
-      if (receipts.length > 0) {
-        if (receipts.every((r) => r.status === 'READ')) {
-          lastMessage.delivery_status = 'READ';
-        } else if (receipts.some((r) => r.status === 'DELIVERED' || r.status === 'READ')) {
-          lastMessage.delivery_status = 'DELIVERED';
+
+      const lastMessage = (await db.get<Message>(
+        `SELECT m.*, u.display_name as sender_name, u.avatar_url as sender_avatar
+         FROM messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE m.chat_id = ?
+         ORDER BY m.created_at DESC
+         LIMIT 1`,
+        [chat.id]
+      )) || null;
+
+      if (lastMessage && lastMessage.sender_id === currentUserId) {
+        const receipts = await db.all<{ status: string }>(
+          'SELECT status FROM delivery_receipts WHERE message_id = ?',
+          [lastMessage.id]
+        );
+        if (receipts.length > 0) {
+          if (receipts.every((r) => r.status === 'READ')) {
+            lastMessage.delivery_status = 'READ';
+          } else if (receipts.some((r) => r.status === 'DELIVERED' || r.status === 'READ')) {
+            lastMessage.delivery_status = 'DELIVERED';
+          } else {
+            lastMessage.delivery_status = 'SENT';
+          }
         } else {
           lastMessage.delivery_status = 'SENT';
         }
-      } else {
-        lastMessage.delivery_status = 'SENT';
       }
-    }
 
-    const unreadResult = (await db.get<{ unread: number }>(
-      `SELECT COUNT(*) as unread
-       FROM messages
-       WHERE chat_id = ? AND sender_id != ? AND created_at > ?`,
-      [chat.id, currentUserId, chat.last_read_at]
-    )) || { unread: 0 };
+      const unreadResult = (await db.get<{ unread: number }>(
+        `SELECT COUNT(*) as unread
+         FROM messages
+         WHERE chat_id = ? AND sender_id != ? AND created_at > ?`,
+        [chat.id, currentUserId, chat.last_read_at]
+      )) || { unread: 0 };
 
-    detailedChats.push({
-      id: chat.id,
-      type: chat.type,
-      name: chat.name,
-      avatar_url: chat.avatar_url,
-      description: chat.description,
-      created_by: chat.created_by,
-      created_at: Number(chat.created_at),
-      updated_at: Number(chat.updated_at),
-      participants,
-      last_message: lastMessage,
-      unread_count: Number(unreadResult.unread),
-    });
-  }
+      return {
+        id: chat.id,
+        type: chat.type,
+        name: chat.name,
+        avatar_url: chat.avatar_url,
+        description: chat.description,
+        created_by: chat.created_by,
+        created_at: Number(chat.created_at),
+        updated_at: Number(chat.updated_at),
+        participants,
+        last_message: lastMessage,
+        unread_count: Number(unreadResult.unread),
+      };
+    })
+  );
 
   res.json({ chats: detailedChats });
 });
@@ -381,4 +435,162 @@ chatRouter.post('/calls', requireAuth, async (req: AuthenticatedRequest, res): P
   );
 
   res.status(201).json({ success: true, callId });
+});
+
+// ==========================================
+// CONTACT REQUESTS (INSTAGRAM-STYLE MUTUAL CONNECT)
+// ==========================================
+
+// Get pending incoming contact requests for current user
+chatRouter.get('/contacts/pending', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
+  const currentUserId = req.user!.id;
+
+  const rows = await db.all<{
+    id: string;
+    sender_id: string;
+    created_at: number;
+    display_name: string;
+    username: string | null;
+    anon_tag: string | null;
+    avatar_url: string;
+    bio: string;
+  }>(
+    `SELECT cr.id, cr.sender_id, cr.created_at,
+            u.display_name, u.username, u.anon_tag, u.avatar_url, u.bio
+     FROM contact_requests cr
+     JOIN users u ON u.id = cr.sender_id
+     WHERE cr.receiver_id = ? AND cr.status = 'PENDING'
+     ORDER BY cr.created_at DESC`,
+    [currentUserId]
+  );
+
+  res.json({ requests: rows });
+});
+
+// Send a contact request to another user
+chatRouter.post('/contacts/request', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
+  const senderId = req.user!.id;
+  const { targetUserId } = req.body;
+
+  if (!targetUserId || targetUserId === senderId) {
+    res.status(400).json({ error: 'Valid target user ID is required' });
+    return;
+  }
+
+  const target = await db.get('SELECT id, display_name FROM users WHERE id = ?', [targetUserId]);
+  if (!target) {
+    res.status(404).json({ error: 'Target user not found' });
+    return;
+  }
+
+  const existing = await db.get<{ id: string; status: string }>(
+    'SELECT id, status FROM contact_requests WHERE sender_id = ? AND receiver_id = ?',
+    [senderId, targetUserId]
+  );
+
+  const now = Date.now();
+  let requestId = existing ? existing.id : crypto.randomUUID();
+
+  if (existing) {
+    await db.run(
+      "UPDATE contact_requests SET status = 'PENDING', updated_at = ? WHERE id = ?",
+      [now, existing.id]
+    );
+  } else {
+    await db.run(
+      "INSERT INTO contact_requests (id, sender_id, receiver_id, status, created_at, updated_at) VALUES (?, ?, ?, 'PENDING', ?, ?)",
+      [requestId, senderId, targetUserId, now, now]
+    );
+  }
+
+  // Real-time notification to target user
+  broadcastToUser(targetUserId, {
+    type: 'contact:request_received',
+    payload: {
+      requestId,
+      senderId,
+      senderName: req.user!.display_name,
+      senderUsername: req.user!.username || req.user!.anon_tag,
+      senderAvatar: req.user!.avatar_url,
+    },
+  });
+
+  res.status(201).json({ success: true, requestId, status: 'PENDING' });
+});
+
+// Respond to a contact request (ACCEPT / DECLINE)
+chatRouter.post('/contacts/respond', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
+  const currentUserId = req.user!.id;
+  const { requestId, action } = req.body;
+
+  if (!requestId || (action !== 'ACCEPT' && action !== 'DECLINE')) {
+    res.status(400).json({ error: 'Valid requestId and action (ACCEPT/DECLINE) required' });
+    return;
+  }
+
+  const request = await db.get<{ id: string; sender_id: string; receiver_id: string; status: string }>(
+    'SELECT * FROM contact_requests WHERE id = ? AND receiver_id = ?',
+    [requestId, currentUserId]
+  );
+
+  if (!request) {
+    res.status(404).json({ error: 'Contact request not found' });
+    return;
+  }
+
+  const now = Date.now();
+
+  if (action === 'DECLINE') {
+    await db.run("UPDATE contact_requests SET status = 'DECLINED', updated_at = ? WHERE id = ?", [now, requestId]);
+    res.json({ success: true, status: 'DECLINED' });
+    return;
+  }
+
+  // Action is ACCEPT:
+  await db.run("UPDATE contact_requests SET status = 'ACCEPTED', updated_at = ? WHERE id = ?", [now, requestId]);
+
+  // Create or get direct chat
+  const otherUserId = request.sender_id;
+  let chat = await db.get<{ id: string }>(
+    `SELECT c.id
+     FROM chats c
+     JOIN chat_participants cp1 ON cp1.chat_id = c.id AND cp1.user_id = ?
+     JOIN chat_participants cp2 ON cp2.chat_id = c.id AND cp2.user_id = ?
+     WHERE c.type = 'DIRECT' LIMIT 1`,
+    [currentUserId, otherUserId]
+  );
+
+  let chatId = chat ? chat.id : crypto.randomUUID();
+
+  if (!chat) {
+    await db.run(
+      `INSERT INTO chats (id, type, name, avatar_url, description, created_by, created_at, updated_at)
+       VALUES (?, 'DIRECT', NULL, '', '', ?, ?, ?)`,
+      [chatId, otherUserId, now, now]
+    );
+
+    await db.run(
+      `INSERT INTO chat_participants (id, chat_id, user_id, role, joined_at, last_read_at)
+       VALUES (?, ?, ?, 'MEMBER', ?, ?)`,
+      [crypto.randomUUID(), chatId, otherUserId, now, now]
+    );
+
+    await db.run(
+      `INSERT INTO chat_participants (id, chat_id, user_id, role, joined_at, last_read_at)
+       VALUES (?, ?, ?, 'MEMBER', ?, ?)`,
+      [crypto.randomUUID(), chatId, currentUserId, now, now]
+    );
+  }
+
+  // Real-time broadcast to the requester
+  broadcastToUser(otherUserId, {
+    type: 'contact:request_accepted',
+    payload: {
+      chatId,
+      acceptedByUserId: currentUserId,
+      acceptedByName: req.user!.display_name,
+    },
+  });
+
+  res.json({ success: true, status: 'ACCEPTED', chatId });
 });

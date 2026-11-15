@@ -173,6 +173,10 @@ export const App: React.FC = () => {
       endCall();
     });
 
+    const unsubContactAccepted = socket.on('contact:request_accepted', () => {
+      api.getChats().then((list) => setChats(list)).catch(() => {});
+    });
+
     return () => {
       isCurrent = false;
       unsubNewMsg();
@@ -184,6 +188,7 @@ export const App: React.FC = () => {
       unsubCallAccepted();
       unsubCallDeclined();
       unsubCallEnded();
+      unsubContactAccepted();
       socket.disconnect();
     };
   }, [token, currentUser?.id, activeChatId]);

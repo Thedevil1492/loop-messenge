@@ -4,6 +4,7 @@ import { Avatar } from '../UI/Avatar.js';
 import { DeliveryTicks } from '../UI/DeliveryTicks.js';
 import { NewChatModal } from './NewChatModal.js';
 import { NewGroupModal } from './NewGroupModal.js';
+import { CameraModal } from '../Camera/CameraModal.js';
 import {
   Search,
   MessageSquarePlus,
@@ -22,6 +23,7 @@ export const ChatList: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const currentUser = useStore((state) => state.currentUser);
   const chats = useStore((state) => state.chats);
@@ -76,9 +78,9 @@ export const ChatList: React.FC = () => {
         {/* Right Top Actions (WhatsApp Style) */}
         <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
           <button
-            onClick={() => alert('Camera: Take photo or video')}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-obsidian-surface transition"
-            title="Camera"
+            onClick={() => setIsCameraOpen(true)}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-obsidian-surface text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+            title="Open Camera"
           >
             <Camera className="w-5 h-5" />
           </button>
@@ -282,6 +284,13 @@ export const ChatList: React.FC = () => {
       {/* Modals */}
       {isNewChatOpen && <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} />}
       {isNewGroupOpen && <NewGroupModal isOpen={isNewGroupOpen} onClose={() => setIsNewGroupOpen(false)} />}
+      {isCameraOpen && (
+        <CameraModal
+          isOpen={isCameraOpen}
+          onClose={() => setIsCameraOpen(false)}
+          mode="STORY"
+        />
+      )}
     </div>
   );
 };

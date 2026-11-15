@@ -213,6 +213,19 @@ export async function initDatabase() {
         created_at BIGINT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_calls_receiver ON call_logs(receiver_id, created_at);
+
+      -- Contact Requests Table (Instagram / WhatsApp mutual connect)
+      CREATE TABLE IF NOT EXISTS contact_requests (
+        id TEXT PRIMARY KEY,
+        sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'ACCEPTED', 'DECLINED')),
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        UNIQUE(sender_id, receiver_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_contact_requests_receiver ON contact_requests(receiver_id, status);
+      CREATE INDEX IF NOT EXISTS idx_contact_requests_sender ON contact_requests(sender_id, status);
     `);
   } else {
     await db.exec(`
@@ -314,7 +327,24 @@ export async function initDatabase() {
           created_at INTEGER NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_calls_receiver ON call_logs(receiver_id, created_at);
+
+        CREATE TABLE IF NOT EXISTS contact_requests (
+          id TEXT PRIMARY KEY,
+          sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          receiver_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'ACCEPTED', 'DECLINED')),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          UNIQUE(sender_id, receiver_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_contact_requests_receiver ON contact_requests(receiver_id, status);
+        CREATE INDEX IF NOT EXISTS idx_contact_requests_sender ON contact_requests(sender_id, status);
       `);
+    } catch {}
+
+    // Cleanup any dummy/test users
+    try {
+      await db.run("DELETE FROM users WHERE display_name = 'User_3210' OR username = 'alex99'");
     } catch {}
   }
 }

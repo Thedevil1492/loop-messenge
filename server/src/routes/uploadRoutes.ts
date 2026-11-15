@@ -58,23 +58,37 @@ uploadRouter.post('/upload', requireAuth, upload.single('file'), async (req, res
   let fileUrl = '';
 
   if (isSupabaseStorage && supabase && req.file.buffer) {
-    const bucket = process.env.SUPABASE_BUCKET || 'loop-media';
-    const ext = path.extname(req.file.originalname);
-    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+    let uploadedToCloud = false;
+    try {
+      const bucket = process.env.SUPABASE_BUCKET || 'loop-media';
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
 
-    const { error } = await supabase.storage.from(bucket).upload(fileName, req.file.buffer, {
-      contentType: mimeType,
-      upsert: true,
-    });
+      const { error } = await supabase.storage.from(bucket).upload(fileName, req.file.buffer, {
+        contentType: mimeType,
+        upsert: true,
+      });
 
-    if (error) {
-      console.error('[Supabase Storage Error]:', error);
-      res.status(500).json({ error: 'Failed to upload media to cloud storage' });
-      return;
+      if (!error) {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+        fileUrl = data.publicUrl;
+        uploadedToCloud = true;
+      } else {
+        console.warn('[Supabase Storage Warning, fallback to local disk]:', error.message);
+      }
+    } catch (err) {
+      console.warn('[Supabase Storage Exception, fallback to local disk]:', err);
     }
 
-    const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    fileUrl = data.publicUrl;
+    if (!uploadedToCloud) {
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+      const filePath = path.join(uploadDir, fileName);
+      if (req.file.buffer) {
+        fs.writeFileSync(filePath, req.file.buffer);
+      }
+      fileUrl = `/uploads/${fileName}`;
+    }
   } else {
     fileUrl = `/uploads/${req.file.filename}`;
   }
@@ -86,4 +100,41 @@ uploadRouter.post('/upload', requireAuth, upload.single('file'), async (req, res
     mimeType: req.file.mimetype,
     mediaType,
   });
+});
+
+// Direct Base64 upload for instant camera photos & canvas captures
+uploadRouter.post('/upload-base64', requireAuth, async (req, res): Promise<void> => {
+  try {
+    const { dataUrl, filename } = req.body;
+    if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+      res.status(400).json({ error: 'Valid image dataUrl is required' });
+      return;
+    }
+
+    const matches = dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+    if (!matches) {
+      res.status(400).json({ error: 'Malformed base64 image data' });
+      return;
+    }
+
+    const mimeType = matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    const ext = mimeType === 'image/png' ? '.png' : '.jpg';
+    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+    const filePath = path.join(uploadDir, fileName);
+
+    fs.writeFileSync(filePath, buffer);
+    const fileUrl = `/uploads/${fileName}`;
+
+    res.json({
+      url: fileUrl,
+      name: filename || `camera-${Date.now()}${ext}`,
+      size: buffer.length,
+      mimeType,
+      mediaType: 'IMAGE',
+    });
+  } catch (err: any) {
+    console.error('Base64 upload error:', err);
+    res.status(500).json({ error: 'Failed to process camera capture' });
+  }
 });

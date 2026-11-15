@@ -10,23 +10,23 @@ interface ExtendedWebSocket extends WebSocket {
   isAlive?: boolean;
 }
 
-export function setupWebSocketServer(httpServer: Server) {
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+// Module-level map of userId -> Set of active WebSocket connections
+const userSockets = new Map<string, Set<ExtendedWebSocket>>();
 
-  // Map of userId -> Set of active WebSocket connections
-  const userSockets = new Map<string, Set<ExtendedWebSocket>>();
-
-  function broadcastToUser(userId: string, data: object) {
-    const sockets = userSockets.get(userId);
-    if (sockets) {
-      const payload = JSON.stringify(data);
-      for (const socket of sockets) {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(payload);
-        }
+export function broadcastToUser(userId: string, data: object) {
+  const sockets = userSockets.get(userId);
+  if (sockets) {
+    const payload = JSON.stringify(data);
+    for (const socket of sockets) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(payload);
       }
     }
   }
+}
+
+export function setupWebSocketServer(httpServer: Server) {
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   async function broadcastPresence(userId: string, isOnline: boolean, lastSeenAt: number) {
     try {
@@ -380,6 +380,22 @@ export function setupWebSocketServer(httpServer: Server) {
               type: 'call:ended',
               payload: {
                 fromUserId: ws.userId,
+                chatId,
+              },
+            });
+            break;
+          }
+
+          case 'call:signal': {
+            if (!ws.userId) return;
+            const { toUserId, signalData, chatId } = payload;
+            if (!toUserId) return;
+
+            broadcastToUser(toUserId, {
+              type: 'call:signal',
+              payload: {
+                fromUserId: ws.userId,
+                signalData,
                 chatId,
               },
             });

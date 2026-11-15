@@ -1,4 +1,4 @@
-import type { User, Chat, Message } from '../types.js';
+import type { User, Chat, Message, SearchContactUser, ContactRequestItem } from '../types.js';
 
 export const BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 const API_BASE = `${BASE_URL}/api`;
@@ -140,13 +140,47 @@ export const api = {
     });
   },
 
-  async searchUsers(query: string): Promise<User[]> {
+  async searchUsers(query: string): Promise<SearchContactUser[]> {
     const res = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`, {
       headers: getHeaders(),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to search users');
     return data.users;
+  },
+
+  async sendContactRequest(targetUserId: string): Promise<{ success: boolean; requestId: string; status: string }> {
+    const res = await fetch(`${API_BASE}/contacts/request`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ targetUserId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send contact request');
+    return data;
+  },
+
+  async getPendingRequests(): Promise<ContactRequestItem[]> {
+    const res = await fetch(`${API_BASE}/contacts/pending`, {
+      headers: getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch pending requests');
+    return data.requests;
+  },
+
+  async respondContactRequest(
+    requestId: string,
+    action: 'ACCEPT' | 'DECLINE'
+  ): Promise<{ success: boolean; status: string; chatId?: string }> {
+    const res = await fetch(`${API_BASE}/contacts/respond`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ requestId, action }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to respond to request');
+    return data;
   },
 
   async uploadFile(file: File): Promise<{
@@ -170,6 +204,20 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to upload file');
+    return data;
+  },
+
+  async uploadBase64(
+    dataUrl: string,
+    filename?: string
+  ): Promise<{ url: string; name: string; size: number; mimeType: string; mediaType: 'IMAGE' }> {
+    const res = await fetch(`${API_BASE}/upload-base64`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ dataUrl, filename }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to upload camera capture');
     return data;
   },
 

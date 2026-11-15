@@ -227,29 +227,10 @@ export const AuthModal: React.FC = () => {
               )}
             </button>
 
-            {/* Quick Demo Testing Buttons */}
-            <div className="pt-3 border-t border-zinc-200/60 dark:border-obsidian-border">
-              <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 text-center mb-2 uppercase tracking-wider">
-                Instant Testing Accounts
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo('alice@loop.app')}
-                  disabled={loading}
-                  className="py-2 px-3 text-xs font-medium rounded-xl bg-zinc-50 dark:bg-obsidian-surface border border-zinc-200 dark:border-obsidian-border hover:border-mint-500 text-zinc-800 dark:text-zinc-200 transition"
-                >
-                  👩 Demo User 1
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo('bob@loop.app')}
-                  disabled={loading}
-                  className="py-2 px-3 text-xs font-medium rounded-xl bg-zinc-50 dark:bg-obsidian-surface border border-zinc-200 dark:border-obsidian-border hover:border-mint-500 text-zinc-800 dark:text-zinc-200 transition"
-                >
-                  👨 Demo User 2
-                </button>
-              </div>
+            <div className="pt-2 text-center">
+              <span className="text-[11px] text-zinc-400">
+                🔒 Protected by End-to-End Cryptography
+              </span>
             </div>
           </form>
         )}

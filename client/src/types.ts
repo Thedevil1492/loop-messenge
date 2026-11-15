@@ -79,6 +79,31 @@ export interface CallLogItem {
   timestamp: number;
 }
 
+export interface SearchContactUser {
+  id: string;
+  display_name: string;
+  username: string | null;
+  anon_tag: string | null;
+  avatar_url: string;
+  bio: string;
+  is_online: number;
+  last_seen_at: number;
+  relationship: 'CONNECTED' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'NONE';
+  requestId?: string;
+  chatId?: string;
+}
+
+export interface ContactRequestItem {
+  id: string;
+  sender_id: string;
+  created_at: number;
+  display_name: string;
+  username: string | null;
+  anon_tag: string | null;
+  avatar_url: string;
+  bio: string;
+}
+
 export interface WsEvent<T = any> {
   type: string;
   payload: T;

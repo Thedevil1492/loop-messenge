@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore.js';
-import { api } from '../../services/api.js';
+import { api, getMediaUrl } from '../../services/api.js';
 import { Avatar } from '../UI/Avatar.js';
+import { CameraModal } from '../Camera/CameraModal.js';
 import { Plus, Camera, Sparkles, Clock, X, Image as ImageIcon, Send, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -24,6 +25,7 @@ export const StatusView: React.FC = () => {
 
   // Add Status Modal
   const [isAdding, setIsAdding] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [selectedColor, setSelectedColor] = useState('#10b981');
   const [uploadedMediaUrl, setUploadedMediaUrl] = useState<string | null>(null);
@@ -151,12 +153,9 @@ export const StatusView: React.FC = () => {
           </div>
 
           <button
-            onClick={() => {
-              setIsAdding(true);
-              setTimeout(() => fileInputRef.current?.click(), 100);
-            }}
-            className="p-2.5 rounded-full bg-zinc-100 dark:bg-obsidian-surface text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
-            title="Upload photo status"
+            onClick={() => setIsCameraOpen(true)}
+            className="p-2.5 rounded-full bg-zinc-100 dark:bg-obsidian-surface text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
+            title="Take photo with camera"
           >
             <Camera className="w-4 h-4" />
           </button>
@@ -226,7 +225,7 @@ export const StatusView: React.FC = () => {
                 className="w-full h-48 rounded-2xl p-4 flex flex-col justify-center items-center text-center text-white relative shadow-inner overflow-hidden transition-colors"
               >
                 {uploadedMediaUrl ? (
-                  <img src={uploadedMediaUrl} alt="Status photo" className="w-full h-full object-cover rounded-xl" />
+                  <img src={getMediaUrl(uploadedMediaUrl)} alt="Status photo" className="w-full h-full object-cover rounded-xl" />
                 ) : (
                   <textarea
                     rows={3}
@@ -278,12 +277,20 @@ export const StatusView: React.FC = () => {
                 />
                 <button
                   type="button"
+                  onClick={() => setIsCameraOpen(true)}
+                  className="p-2.5 rounded-xl bg-zinc-100 dark:bg-obsidian-surface text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  <Camera className="w-4 h-4 text-mint-500" />
+                  <span>Camera</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="p-2.5 rounded-xl bg-zinc-100 dark:bg-obsidian-surface text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center gap-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition disabled:opacity-50"
+                  className="p-2.5 rounded-xl bg-zinc-100 dark:bg-obsidian-surface text-zinc-700 dark:text-zinc-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition disabled:opacity-50 cursor-pointer"
                 >
                   <ImageIcon className="w-4 h-4 text-mint-500" />
-                  <span>{uploading ? 'Uploading Photo...' : 'Add Photo'}</span>
+                  <span>{uploading ? 'Uploading...' : 'Gallery'}</span>
                 </button>
 
                 <div className="flex-1" />
@@ -343,7 +350,7 @@ export const StatusView: React.FC = () => {
             <div className="my-auto flex flex-col items-center justify-center text-center px-4">
               {viewingStatus.media_url ? (
                 <img
-                  src={viewingStatus.media_url}
+                  src={getMediaUrl(viewingStatus.media_url)}
                   alt="Story"
                   className="max-h-[50vh] w-full object-contain rounded-2xl drop-shadow-lg"
                 />
@@ -357,6 +364,22 @@ export const StatusView: React.FC = () => {
             <p className="text-center text-[10px] opacity-60">Tap anywhere to close</p>
           </div>
         </div>
+      )}
+      {/* Live Camera Viewfinder Modal */}
+      {isCameraOpen && (
+        <CameraModal
+          isOpen={isCameraOpen}
+          onClose={() => {
+            setIsCameraOpen(false);
+            loadStatuses();
+          }}
+          onPhotoCaptured={(url) => {
+            setUploadedMediaUrl(url);
+            setIsAdding(true);
+            loadStatuses();
+          }}
+          mode="STORY"
+        />
       )}
     </div>
   );
