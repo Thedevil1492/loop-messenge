@@ -24,6 +24,20 @@ export const SettingsView: React.FC = () => {
 
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [tapCount, setTapCount] = useState(0);
+  const versionPressTimerRef = React.useRef<any>(null);
+
+  const startVersionPress = () => {
+    versionPressTimerRef.current = setTimeout(() => {
+      setIsAdminOpen(true);
+    }, 2000);
+  };
+
+  const endVersionPress = () => {
+    if (versionPressTimerRef.current) {
+      clearTimeout(versionPressTimerRef.current);
+      versionPressTimerRef.current = null;
+    }
+  };
 
   const handleVersionTap = () => {
     const next = tapCount + 1;
@@ -167,20 +181,22 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Master Admin Panel Button (Always visible & passcode protected) */}
-        <button
-          onClick={() => setIsAdminOpen(true)}
-          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs transition border border-rose-500/20 shadow-xs cursor-pointer"
-        >
-          <span className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-rose-500" />
-            <span>Master Admin Command Center</span>
-          </span>
-          <div className="flex items-center gap-1 text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold px-2 py-0.5 rounded-full">
-            <span>Passcode</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
-        </button>
+        {/* Master Admin Panel Button (ONLY for Admin users, hidden from all others) */}
+        {currentUser?.is_admin === 1 && (
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs transition border border-rose-500/20 shadow-xs cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-rose-500" />
+              <span>Master Admin Command Center</span>
+            </span>
+            <div className="flex items-center gap-1 text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold px-2 py-0.5 rounded-full">
+              <span>Passcode</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        )}
 
         {/* Log Out Button */}
         <button
@@ -193,8 +209,12 @@ export const SettingsView: React.FC = () => {
 
         <p
           onClick={handleVersionTap}
+          onMouseDown={startVersionPress}
+          onMouseUp={endVersionPress}
+          onTouchStart={startVersionPress}
+          onTouchEnd={endVersionPress}
           className="text-center text-[11px] text-zinc-400 dark:text-zinc-500 pt-2 pb-6 cursor-pointer select-none active:scale-95 transition"
-          title="Tap 5 times for Admin Console"
+          title="Loop Messenger"
         >
           Loop Messenger • Version 1.0.0 (Final V1) • Obsidian Edition
         </p>

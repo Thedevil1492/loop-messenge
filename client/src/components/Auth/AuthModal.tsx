@@ -28,14 +28,27 @@ export const AuthModal: React.FC = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
 
-  // Logo tap secret counter for Admin Panel
+  // Logo tap secret counter & long-press for Admin Panel
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const setAuth = useStore((state) => state.setAuth);
+  const longPressTimerRef = React.useRef<any>(null);
+
+  const startSecretPress = () => {
+    longPressTimerRef.current = setTimeout(() => {
+      setIsAdminOpen(true);
+      setError(null);
+    }, 2000); // 2 seconds hold secretly opens Admin Console
+  };
+
+  const endSecretPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   // Secret Admin Access: Tap logo 5 times to unlock Master Admin Console
   const handleLogoTap = () => {
@@ -119,28 +132,19 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in select-none">
-      <div className="w-full max-w-md bg-white dark:bg-obsidian-card border border-zinc-200 dark:border-obsidian-border rounded-3xl shadow-2xl p-6 md:p-8 overflow-hidden transition-all relative">
-        {/* Top Right Admin Button */}
-        <div className="absolute top-4 right-4">
-          <button
-            type="button"
-            onClick={() => setIsAdminOpen(true)}
-            className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 px-2 py-1 rounded-lg bg-slate-100 dark:bg-obsidian-surface hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
-            title="Open Admin Console"
-          >
-            <KeyRound className="w-3 h-3 text-rose-500" />
-            <span>Admin</span>
-          </button>
-        </div>
-
+      <div className="w-full max-w-md bg-white dark:bg-obsidian-card border border-zinc-200 dark:border-obsidian-border rounded-3xl shadow-2xl p-6 md:p-8 overflow-hidden transition-all">
         {/* App Logo & Header */}
         <div className="text-center mb-6">
           <div
             onClick={handleLogoTap}
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-mint-500/10 dark:bg-mint-500/20 text-mint-600 dark:text-mint-400 border border-mint-500/20 mb-3 shadow-xs cursor-pointer active:scale-95 transition"
-            title="Loop Messenger (Tap for Secret Admin Panel)"
+            onMouseDown={startSecretPress}
+            onMouseUp={endSecretPress}
+            onTouchStart={startSecretPress}
+            onTouchEnd={endSecretPress}
+            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-mint-500/10 dark:bg-mint-500/20 text-mint-600 dark:text-mint-400 border border-mint-500/20 mb-3 shadow-xs cursor-pointer active:scale-95 transition select-none"
+            title="Loop Messenger"
           >
-            <img src="/logo.svg" alt="Loop" className="w-8 h-8" />
+            <img src="/logo.svg" alt="Loop" className="w-8 h-8 pointer-events-none" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Loop <span className="text-mint-600 dark:text-mint-400">Messenger</span>

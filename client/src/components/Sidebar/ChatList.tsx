@@ -33,6 +33,31 @@ export const ChatList: React.FC = () => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [headerTapCount, setHeaderTapCount] = useState(0);
+  const headerPressTimerRef = React.useRef<any>(null);
+
+  const startHeaderPress = () => {
+    headerPressTimerRef.current = setTimeout(() => {
+      setIsAdminOpen(true);
+    }, 2000);
+  };
+
+  const endHeaderPress = () => {
+    if (headerPressTimerRef.current) {
+      clearTimeout(headerPressTimerRef.current);
+      headerPressTimerRef.current = null;
+    }
+  };
+
+  const handleHeaderTap = () => {
+    const next = headerTapCount + 1;
+    if (next >= 5) {
+      setHeaderTapCount(0);
+      setIsAdminOpen(true);
+    } else {
+      setHeaderTapCount(next);
+    }
+  };
 
   const currentUser = useStore((state) => state.currentUser);
   const chats = useStore((state) => state.chats);
@@ -76,7 +101,15 @@ export const ChatList: React.FC = () => {
     <div className="w-full h-full flex flex-col bg-white dark:bg-obsidian-card border-r border-slate-200 dark:border-obsidian-border select-none">
       {/* Top Brand & Actions Header */}
       <div className="p-3.5 px-4 flex items-center justify-between border-b border-slate-100 dark:border-obsidian-border bg-white dark:bg-obsidian-card">
-        <div className="flex items-center gap-2.5">
+        <div
+          onClick={handleHeaderTap}
+          onMouseDown={startHeaderPress}
+          onMouseUp={endHeaderPress}
+          onTouchStart={startHeaderPress}
+          onTouchEnd={endHeaderPress}
+          className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition select-none"
+          title="Loop"
+        >
           <div className="w-8 h-8 rounded-xl bg-mint-500/15 dark:bg-mint-500/20 text-mint-600 dark:text-mint-400 flex items-center justify-center font-bold">
             <svg viewBox="0 0 100 100" className="w-5 h-5 fill-none stroke-current" strokeWidth="11">
               <path d="M 32 38 C 22 38 18 46 18 50 C 18 56 24 64 34 64 C 44 64 52 50 56 46 C 60 42 66 36 74 36 C 82 36 86 44 86 50 C 86 56 80 64 70 64 C 60 64 54 52 50 48 C 46 44 40 38 32 38 Z" />
@@ -129,18 +162,20 @@ export const ChatList: React.FC = () => {
                   onClick={() => setIsMenuOpen(false)}
                 />
                 <div className="absolute right-0 top-11 w-52 bg-white dark:bg-obsidian-card border border-slate-200 dark:border-obsidian-border rounded-2xl shadow-xl py-2 z-50 text-xs font-medium animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100 dark:divide-obsidian-border/50">
-                  <div className="pb-1.5">
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setIsAdminOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left font-bold"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-rose-500" />
-                      <span>Admin Command Center</span>
-                    </button>
-                  </div>
+                  {currentUser?.is_admin === 1 && (
+                    <div className="pb-1.5">
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          setIsAdminOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3.5 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left font-bold"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-rose-500" />
+                        <span>Admin Command Center</span>
+                      </button>
+                    </div>
+                  )}
 
                   <div className="py-1.5">
                     <button
