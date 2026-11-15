@@ -15,9 +15,9 @@ services:
       - key: CORS_ORIGIN
         value: "*"
       - key: DATABASE_URL
-        sync: false
+        value: postgresql://postgres.asnefjwtogfbhsmvdbvj:Theayushjha88%40@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres
       - key: JWT_SECRET
-        generateValue: true
+        value: loop_jwt_secret_key_prod_2026_super_secure
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY

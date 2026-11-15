@@ -46,20 +46,30 @@ interface StoreState {
   setLightboxMedia: (media: { url: string; type: 'IMAGE' | 'VIDEO'; name?: string } | null) => void;
 }
 
+const savedUser = localStorage.getItem('loop_user');
+let initialUser: User | null = null;
+try {
+  initialUser = savedUser ? JSON.parse(savedUser) : null;
+} catch {}
+
 export const useStore = create<StoreState>((set) => ({
   // Auth
-  currentUser: null,
+  currentUser: initialUser,
   token: localStorage.getItem('loop_token'),
   setAuth: (user, token) => {
     localStorage.setItem('loop_token', token);
+    localStorage.setItem('loop_user', JSON.stringify(user));
     set({ currentUser: user, token });
   },
   updateCurrentUser: (updated) =>
-    set((state) => ({
-      currentUser: state.currentUser ? { ...state.currentUser, ...updated } : null,
-    })),
+    set((state) => {
+      const next = state.currentUser ? { ...state.currentUser, ...updated } : null;
+      if (next) localStorage.setItem('loop_user', JSON.stringify(next));
+      return { currentUser: next };
+    }),
   logout: () => {
     localStorage.removeItem('loop_token');
+    localStorage.removeItem('loop_user');
     set({ currentUser: null, token: null, chats: [], activeChatId: null, messages: {} });
   },
 

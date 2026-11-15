@@ -9,7 +9,13 @@ const __dirname = path.dirname(__filename);
 // Explicitly load .env from server root
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const { Pool } = pg;
-const databaseUrl = process.env.DATABASE_URL;
+const DEFAULT_SUPABASE_POOLER_URL = 'postgresql://postgres.asnefjwtogfbhsmvdbvj:Theayushjha88%40@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres';
+let databaseUrl = process.env.DATABASE_URL;
+// Automatically upgrade any direct IPv6 Supabase connection to the verified IPv4 pooler
+if (!databaseUrl || databaseUrl.includes('db.asnefjwtogfbhsmvdbvj.supabase.co')) {
+    console.log('[DB] Using verified IPv4 Cloud PostgreSQL Pooler (Supabase)...');
+    databaseUrl = DEFAULT_SUPABASE_POOLER_URL;
+}
 let isPostgres = !!(databaseUrl && (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://')));
 let sqliteDb = null;
 let pgPool = null;
@@ -27,11 +33,11 @@ function initSqlite() {
     }
 }
 if (isPostgres) {
-    console.log('[DB] Checking Cloud Database connection...');
+    console.log('[DB] Connecting to Cloud Database (Supabase PostgreSQL)...');
     pgPool = new Pool({
         connectionString: databaseUrl,
         ssl: databaseUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-        connectionTimeoutMillis: 2000,
+        connectionTimeoutMillis: 10000,
     });
 }
 else {

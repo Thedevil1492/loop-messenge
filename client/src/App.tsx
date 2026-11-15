@@ -58,9 +58,16 @@ export const App: React.FC = () => {
         if (isCurrent) {
           setAuth(user, token!);
         }
-      } catch (err) {
-        console.error('Session expired or invalid:', err);
-        logout();
+      } catch (err: any) {
+        // Only log out if token is explicitly rejected (401 Unauthorized)
+        const isAuthError = err?.status === 401 || err?.message?.includes('401');
+        if (isAuthError) {
+          console.error('Session expired (401), logging out:', err);
+          logout();
+        } else {
+          // If server is cold-starting, sleeping, or temporarily offline, preserve session!
+          console.warn('Server connecting or waking up. Preserving local session.');
+        }
       }
     }
     initUser();
