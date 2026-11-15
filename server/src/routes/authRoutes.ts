@@ -136,23 +136,41 @@ authRouter.post('/verify-otp', async (req, res): Promise<void> => {
 });
 
 authRouter.post('/register', async (req, res): Promise<void> => {
-  const { email, password, displayName } = req.body;
+  const { displayName, username, password, email } = req.body;
 
-  if (!email || !password || !displayName) {
-    res.status(400).json({ error: 'Email, password, and display name are required' });
+  if (!displayName || !password) {
+    res.status(400).json({ error: 'Display name and password are required' });
     return;
   }
 
-  const cleanEmail = String(email).trim().toLowerCase();
   const cleanName = String(displayName).trim();
+  const rawUsername = String(username || cleanName.toLowerCase().replace(/\s+/g, '_')).trim().toLowerCase().replace(/^@/, '');
+  const cleanUsername = rawUsername.replace(/[^a-z0-9_.-]/g, '');
+
+  if (cleanUsername.length < 3) {
+    res.status(400).json({ error: 'Username must be at least 3 characters long (letters, numbers, underscores)' });
+    return;
+  }
 
   if (password.length < 6) {
     res.status(400).json({ error: 'Password must be at least 6 characters' });
     return;
   }
 
-  const existing = await db.get('SELECT id FROM users WHERE email = ?', [cleanEmail]);
-  if (existing) {
+  // 1. Enforce STRICT UNIQUE USERNAME (No duplicate usernames allowed!)
+  const existingUsername = await db.get('SELECT id FROM users WHERE LOWER(username) = ?', [cleanUsername]);
+  if (existingUsername) {
+    res.status(409).json({ error: `Username @${cleanUsername} is already taken. Please choose another username.` });
+    return;
+  }
+
+  // 2. Email uniqueness check
+  const cleanEmail = email && String(email).trim()
+    ? String(email).trim().toLowerCase()
+    : `${cleanUsername}@loop.id`;
+
+  const existingEmail = await db.get('SELECT id FROM users WHERE email = ?', [cleanEmail]);
+  if (existingEmail) {
     res.status(409).json({ error: 'An account with this email already exists' });
     return;
   }
@@ -164,9 +182,9 @@ authRouter.post('/register', async (req, res): Promise<void> => {
   const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=2b5bf4,06b6d4&textColor=ffffff`;
 
   await db.run(
-    `INSERT INTO users (id, email, password_hash, display_name, avatar_url, bio, is_online, last_seen_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-    [userId, cleanEmail, passwordHash, cleanName, defaultAvatar, 'Hey there! I am using Loop.', now, now]
+    `INSERT INTO users (id, email, password_hash, display_name, avatar_url, bio, is_online, last_seen_at, created_at, username, anon_tag, persona_type, is_admin)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'PERSONAL', 0)`,
+    [userId, cleanEmail, passwordHash, cleanName, defaultAvatar, 'Hey there! I am using Loop.', now, now, cleanUsername, cleanUsername]
   );
 
   const token = signToken(userId);
@@ -179,29 +197,37 @@ authRouter.post('/register', async (req, res): Promise<void> => {
     is_online: 1,
     last_seen_at: now,
     created_at: now,
+    username: cleanUsername,
+    anon_tag: cleanUsername,
+    persona_type: 'PERSONAL',
+    is_admin: 0,
   };
 
   res.status(201).json({ token, user });
 });
 
 authRouter.post('/login', async (req, res): Promise<void> => {
-  const { email, password } = req.body;
+  const { identifier, email, password } = req.body;
+  const loginKey = String(identifier || email || '').trim().toLowerCase().replace(/^@/, '');
 
-  if (!email || !password) {
-    res.status(400).json({ error: 'Email and password are required' });
+  if (!loginKey || !password) {
+    res.status(400).json({ error: 'Username/Email and password are required' });
     return;
   }
 
-  const cleanEmail = String(email).trim().toLowerCase();
+  // Allow login by either @username or email
   const row = await db.get<User & { password_hash: string }>(
-    'SELECT * FROM users WHERE email = ?',
-    [cleanEmail]
+    'SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
+    [loginKey, loginKey]
   );
 
   if (!row || !verifyPassword(password, row.password_hash)) {
-    res.status(401).json({ error: 'Invalid email or password' });
+    res.status(401).json({ error: 'Invalid username/email or password' });
     return;
   }
+
+  const now = Date.now();
+  await db.run('UPDATE users SET is_online = 1, last_seen_at = ? WHERE id = ?', [now, row.id]);
 
   const token = signToken(row.id);
   const { password_hash, ...user } = row;

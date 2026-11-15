@@ -23,6 +23,7 @@ chatRouter.get('/users/search', requireAuth, async (req: AuthenticatedRequest, r
   const pattern = `%${cleanQuery}%`;
 
   // Search by username, anon_tag, or display_name ONLY - NO email, NO phone!
+  // Admin accounts (is_admin = 1) remain invisible to users unless admin initiated a chat with them!
   const foundUsers = await db.all<{
     id: string;
     display_name: string;
@@ -36,9 +37,15 @@ chatRouter.get('/users/search', requireAuth, async (req: AuthenticatedRequest, r
   }>(
     `SELECT id, display_name, username, anon_tag, avatar_url, bio, is_online, last_seen_at, created_at
      FROM users
-     WHERE id != ? AND (username LIKE ? OR anon_tag LIKE ? OR display_name LIKE ?)
+     WHERE id != ?
+       AND (is_admin = 0 OR is_admin IS NULL OR id IN (
+         SELECT cp2.user_id FROM chat_participants cp1
+         JOIN chat_participants cp2 ON cp2.chat_id = cp1.chat_id
+         WHERE cp1.user_id = ?
+       ))
+       AND (username LIKE ? OR anon_tag LIKE ? OR display_name LIKE ?)
      LIMIT 20`,
-    [currentUserId, pattern, pattern, pattern]
+    [currentUserId, currentUserId, pattern, pattern, pattern]
   );
 
   // Check relationship for each user
@@ -347,7 +354,7 @@ chatRouter.get('/status', requireAuth, async (_req: AuthenticatedRequest, res): 
     text: string;
     media_url: string | null;
     bg_color: string;
-    created_at: number;
+    created_at: number | string;
     display_name: string;
     avatar_url: string;
     username: string | null;
@@ -360,7 +367,12 @@ chatRouter.get('/status', requireAuth, async (_req: AuthenticatedRequest, res): 
     [since]
   );
 
-  res.json({ statuses: rows });
+  const formattedRows = rows.map((r) => ({
+    ...r,
+    created_at: Number(r.created_at),
+  }));
+
+  res.json({ statuses: formattedRows });
 });
 
 chatRouter.post('/status', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {

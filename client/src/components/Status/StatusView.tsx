@@ -39,11 +39,25 @@ export const StatusView: React.FC = () => {
 
   const colorPalette = ['#10b981', '#065f46', '#18181b', '#6366f1', '#8b5cf6', '#ec4899', '#f97316'];
 
+  const formatStatusTime = (timestamp: any) => {
+    try {
+      const num = Number(timestamp);
+      if (!num || isNaN(num)) return 'just now';
+      return formatDistanceToNow(new Date(num), { addSuffix: true });
+    } catch {
+      return 'recently';
+    }
+  };
+
   const loadStatuses = async () => {
     setLoading(true);
     try {
       const list = await api.getStatusUpdates();
-      setStatuses(list);
+      const sanitized = (list || []).map((s) => ({
+        ...s,
+        created_at: Number(s.created_at) || Date.now(),
+      }));
+      setStatuses(sanitized);
     } catch (err) {
       console.error('Failed to load status updates:', err);
     } finally {
@@ -193,7 +207,7 @@ export const StatusView: React.FC = () => {
                       {status.display_name}
                     </h4>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                      {formatDistanceToNow(new Date(status.created_at), { addSuffix: true })}
+                      {formatStatusTime(status.created_at)}
                     </p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-zinc-400" />
@@ -332,7 +346,7 @@ export const StatusView: React.FC = () => {
                   <div>
                     <p className="text-xs font-bold leading-tight">{viewingStatus.display_name}</p>
                     <p className="text-[10px] opacity-75">
-                      {formatDistanceToNow(new Date(viewingStatus.created_at), { addSuffix: true })}
+                      {formatStatusTime(viewingStatus.created_at)}
                     </p>
                   </div>
                 </div>

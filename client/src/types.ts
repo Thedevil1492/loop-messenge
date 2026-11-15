@@ -12,6 +12,7 @@ export interface User {
   anon_tag?: string;
   public_key?: string;
   persona_type?: string;
+  is_admin?: number;
 }
 
 export interface Chat {

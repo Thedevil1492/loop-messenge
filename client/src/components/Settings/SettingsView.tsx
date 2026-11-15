@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../store/useStore.js';
 import { Avatar } from '../UI/Avatar.js';
+import { AdminModal } from '../Admin/AdminModal.js';
 import {
   Moon,
   Sun,
@@ -12,6 +13,7 @@ import {
   ChevronRight,
   Bell,
   Smartphone,
+  KeyRound,
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -19,6 +21,19 @@ export const SettingsView: React.FC = () => {
   const theme = useStore((state) => state.theme);
   const toggleTheme = useStore((state) => state.toggleTheme);
   const logout = useStore((state) => state.logout);
+
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+
+  const handleVersionTap = () => {
+    const next = tapCount + 1;
+    if (next >= 5) {
+      setTapCount(0);
+      setIsAdminOpen(true);
+    } else {
+      setTapCount(next);
+    }
+  };
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-obsidian-bg select-none overflow-y-auto">
@@ -152,6 +167,20 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
+        {/* Master Admin Panel Button (for Admin or via Secret Tap) */}
+        {(currentUser?.is_admin === 1 || tapCount >= 3) && (
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs transition border border-rose-500/20 shadow-xs cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4" />
+              <span>Master Admin Console</span>
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+
         {/* Log Out Button */}
         <button
           onClick={logout}
@@ -161,10 +190,19 @@ export const SettingsView: React.FC = () => {
           <span>Sign Out of Loop</span>
         </button>
 
-        <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500 pt-2 pb-6">
-          Loop Messenger • Version 1.0.0 • Obsidian & Mint Edition
+        <p
+          onClick={handleVersionTap}
+          className="text-center text-[11px] text-zinc-400 dark:text-zinc-500 pt-2 pb-6 cursor-pointer select-none active:scale-95 transition"
+          title="Tap 5 times for Admin Console"
+        >
+          Loop Messenger • Version 1.0.0 (Final V1) • Obsidian Edition
         </p>
       </div>
+
+      {/* Admin Console Modal */}
+      {isAdminOpen && (
+        <AdminModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
+      )}
     </div>
   );
 };

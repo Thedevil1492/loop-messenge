@@ -185,10 +185,12 @@ export async function initDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS public_key TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seed_hash TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS persona_type TEXT DEFAULT 'PERSONAL';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin INTEGER DEFAULT 0;
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
       CREATE INDEX IF NOT EXISTS idx_users_anon_tag ON users(anon_tag);
       CREATE INDEX IF NOT EXISTS idx_users_seed_hash ON users(seed_hash);
+      CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);
 
       -- Status Stories Table
       CREATE TABLE IF NOT EXISTS status_updates (
@@ -299,10 +301,12 @@ export async function initDatabase() {
     try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN public_key TEXT;'); } catch {}
     try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN seed_hash TEXT;'); } catch {}
     try { sqliteDb!.exec("ALTER TABLE users ADD COLUMN persona_type TEXT DEFAULT 'PERSONAL';"); } catch {}
+    try { sqliteDb!.exec("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0;"); } catch {}
     try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);'); } catch {}
     try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);'); } catch {}
     try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_anon_tag ON users(anon_tag);'); } catch {}
     try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_seed_hash ON users(seed_hash);'); } catch {}
+    try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);'); } catch {}
 
     try {
       sqliteDb!.exec(`

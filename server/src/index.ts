@@ -11,6 +11,7 @@ import { initDatabase, db } from './db.js';
 import { authRouter } from './routes/authRoutes.js';
 import { chatRouter } from './routes/chatRoutes.js';
 import { uploadRouter } from './routes/uploadRoutes.js';
+import { adminRouter } from './routes/adminRoutes.js';
 import { setupWebSocketServer } from './ws.js';
 import { hashPassword } from './auth.js';
 
@@ -124,6 +125,7 @@ async function startServer() {
   app.use('/api/auth', authRouter);
   app.use('/api', chatRouter);
   app.use('/api', uploadRouter);
+  app.use('/api', adminRouter);
 
   // Health check endpoint for Render/Railway
   app.get('/health', (_req, res) => {
