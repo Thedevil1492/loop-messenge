@@ -15,15 +15,15 @@ chatRouter.get('/users/search', requireAuth, async (req: AuthenticatedRequest, r
   if (q) {
     const pattern = `%${q}%`;
     users = await db.all<User>(
-      `SELECT id, email, display_name, avatar_url, bio, is_online, last_seen_at, created_at
+      `SELECT id, email, display_name, avatar_url, bio, is_online, last_seen_at, created_at, anon_tag
        FROM users
-       WHERE id != ? AND (display_name LIKE ? OR email LIKE ?)
+       WHERE id != ? AND (display_name LIKE ? OR email LIKE ? OR anon_tag LIKE ?)
        LIMIT 20`,
-      [currentUserId, pattern, pattern]
+      [currentUserId, pattern, pattern, pattern]
     );
   } else {
     users = await db.all<User>(
-      `SELECT id, email, display_name, avatar_url, bio, is_online, last_seen_at, created_at
+      `SELECT id, email, display_name, avatar_url, bio, is_online, last_seen_at, created_at, anon_tag
        FROM users
        WHERE id != ?
        ORDER BY last_seen_at DESC
@@ -52,7 +52,7 @@ chatRouter.get('/chats', requireAuth, async (req: AuthenticatedRequest, res): Pr
 
   for (const chat of chatRows) {
     const participants = await db.all<User>(
-      `SELECT u.id, u.email, u.display_name, u.avatar_url, u.bio, u.is_online, u.last_seen_at, u.created_at
+      `SELECT u.id, u.email, u.display_name, u.avatar_url, u.bio, u.is_online, u.last_seen_at, u.created_at, u.anon_tag
        FROM users u
        JOIN chat_participants cp ON cp.user_id = u.id
        WHERE cp.chat_id = ?`,

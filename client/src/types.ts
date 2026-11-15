@@ -7,6 +7,9 @@ export interface User {
   is_online: number;
   last_seen_at: number;
   created_at: number;
+  anon_tag?: string;
+  public_key?: string;
+  persona_type?: string;
 }
 
 export interface Chat {

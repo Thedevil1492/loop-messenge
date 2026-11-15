@@ -45,6 +45,34 @@ export const api = {
     return data;
   },
 
+  async anonymousRegister(payload: {
+    displayName: string;
+    anonTag?: string;
+    seedHash: string;
+    publicKey?: string;
+    avatarUrl?: string;
+  }): Promise<{ token: string; user: User }> {
+    const res = await fetch(`${API_BASE}/auth/anonymous-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create anonymous identity');
+    return data;
+  },
+
+  async anonymousLogin(seedHash: string): Promise<{ token: string; user: User }> {
+    const res = await fetch(`${API_BASE}/auth/anonymous-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seedHash }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to restore anonymous identity');
+    return data;
+  },
+
   async getMe(): Promise<{ user: User }> {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: getHeaders(),

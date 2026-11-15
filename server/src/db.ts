@@ -177,6 +177,14 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id, created_at);
       CREATE INDEX IF NOT EXISTS idx_participants_user_id ON chat_participants(user_id);
       CREATE INDEX IF NOT EXISTS idx_receipts_message_id ON delivery_receipts(message_id);
+
+      -- Anonymous Zero-PII columns migration
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS anon_tag TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS public_key TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS seed_hash TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS persona_type TEXT DEFAULT 'PERSONAL';
+      CREATE INDEX IF NOT EXISTS idx_users_anon_tag ON users(anon_tag);
+      CREATE INDEX IF NOT EXISTS idx_users_seed_hash ON users(seed_hash);
     `);
   } else {
     await db.exec(`
@@ -242,5 +250,13 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_participants_user_id ON chat_participants(user_id);
       CREATE INDEX IF NOT EXISTS idx_receipts_message_id ON delivery_receipts(message_id);
     `);
+
+    // Safe column additions for SQLite
+    try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN anon_tag TEXT;'); } catch {}
+    try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN public_key TEXT;'); } catch {}
+    try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN seed_hash TEXT;'); } catch {}
+    try { sqliteDb!.exec("ALTER TABLE users ADD COLUMN persona_type TEXT DEFAULT 'PERSONAL';"); } catch {}
+    try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_anon_tag ON users(anon_tag);'); } catch {}
+    try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_seed_hash ON users(seed_hash);'); } catch {}
   }
 }

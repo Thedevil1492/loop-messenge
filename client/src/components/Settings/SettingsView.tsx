@@ -32,11 +32,19 @@ export const SettingsView: React.FC = () => {
         <div className="flex items-center gap-4 bg-white dark:bg-obsidian-card p-4 rounded-2xl border border-slate-200/80 dark:border-obsidian-border shadow-xs">
           <Avatar src={currentUser?.avatar_url} name={currentUser?.display_name || 'Me'} size="lg" />
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 truncate">
-              {currentUser?.display_name}
-            </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{currentUser?.email}</p>
-            <p className="text-xs text-mint-600 dark:text-mint-400 font-medium truncate mt-0.5">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                {currentUser?.display_name}
+              </h2>
+              <span className="text-[10px] font-semibold bg-mint-500/15 text-mint-600 dark:text-mint-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" />
+                <span>Zero-PII</span>
+              </span>
+            </div>
+            <p className="text-xs text-mint-600 dark:text-mint-400 font-semibold truncate mt-0.5">
+              {currentUser?.anon_tag || currentUser?.email}
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
               {currentUser?.bio || 'Looping in private'}
             </p>
           </div>

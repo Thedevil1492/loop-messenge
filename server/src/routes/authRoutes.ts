@@ -80,6 +80,110 @@ authRouter.post('/login', async (req, res): Promise<void> => {
   res.json({ token, user });
 });
 
+authRouter.post('/anonymous-register', async (req, res): Promise<void> => {
+  const { displayName, anonTag, seedHash, avatarUrl, publicKey } = req.body;
+
+  if (!displayName || !seedHash) {
+    res.status(400).json({ error: 'Display name and seed hash are required' });
+    return;
+  }
+
+  const cleanName = String(displayName).trim();
+  const cleanSeedHash = String(seedHash).trim().toLowerCase();
+  const randomSuffix = crypto.randomInt(100, 999);
+  const cleanAnonTag = anonTag
+    ? String(anonTag).trim().toLowerCase()
+    : `@${cleanName.toLowerCase().replace(/[^a-z0-9_]/g, '')}_${randomSuffix}`;
+
+  // Check if anon tag already exists
+  const existingTag = await db.get('SELECT id FROM users WHERE anon_tag = ?', [cleanAnonTag]);
+  if (existingTag) {
+    res.status(409).json({ error: 'This Anonymous Tag is already registered. Please choose another.' });
+    return;
+  }
+
+  const userId = crypto.randomUUID();
+  const passwordHash = hashPassword(cleanSeedHash);
+  const now = Date.now();
+  const defaultAvatar =
+    avatarUrl ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=10b981,059669&textColor=ffffff`;
+  const internalEmail = `${cleanAnonTag.replace('@', '')}@loop.id`;
+
+  await db.run(
+    `INSERT INTO users (id, email, password_hash, display_name, avatar_url, bio, is_online, last_seen_at, created_at, anon_tag, public_key, seed_hash)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+    [
+      userId,
+      internalEmail,
+      passwordHash,
+      cleanName,
+      defaultAvatar,
+      'Zero-PII Anonymous Citizen on Loop 🛡️',
+      now,
+      now,
+      cleanAnonTag,
+      publicKey || null,
+      cleanSeedHash,
+    ]
+  );
+
+  const token = signToken(userId);
+  const user: User = {
+    id: userId,
+    email: internalEmail,
+    display_name: cleanName,
+    avatar_url: defaultAvatar,
+    bio: 'Zero-PII Anonymous Citizen on Loop 🛡️',
+    is_online: 1,
+    last_seen_at: now,
+    created_at: now,
+    anon_tag: cleanAnonTag,
+    public_key: publicKey,
+    persona_type: 'PERSONAL',
+  };
+
+  res.status(201).json({ token, user });
+});
+
+authRouter.post('/anonymous-login', async (req, res): Promise<void> => {
+  const { seedHash } = req.body;
+
+  if (!seedHash) {
+    res.status(400).json({ error: '12-word recovery seed hash is required' });
+    return;
+  }
+
+  const cleanSeedHash = String(seedHash).trim().toLowerCase();
+
+  // Find user by seed_hash or verifyPassword
+  const row = await db.get<User & { password_hash: string }>(
+    'SELECT * FROM users WHERE seed_hash = ?',
+    [cleanSeedHash]
+  );
+
+  if (!row) {
+    // Fallback: check all users if any match hash
+    const allUsers = await db.all<User & { password_hash: string }>(
+      'SELECT * FROM users WHERE anon_tag IS NOT NULL'
+    );
+    const matched = allUsers.find((u) => verifyPassword(cleanSeedHash, u.password_hash));
+    if (!matched) {
+      res.status(401).json({ error: 'No anonymous account found matching this 12-word seed phrase' });
+      return;
+    }
+    const token = signToken(matched.id);
+    const { password_hash, seed_hash, ...user } = matched as any;
+    res.json({ token, user });
+    return;
+  }
+
+  const token = signToken(row.id);
+  const { password_hash, seed_hash, ...user } = row as any;
+
+  res.json({ token, user });
+});
+
 authRouter.get('/me', requireAuth, (req: AuthenticatedRequest, res): void => {
   res.json({ user: req.user });
 });
