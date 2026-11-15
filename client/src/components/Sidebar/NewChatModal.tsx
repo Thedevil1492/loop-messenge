@@ -224,16 +224,16 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose }) =
                   <span className="w-5 h-5 border-2 border-mint-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : !search.trim() || search.trim().length < 2 ? (
-                /* Privacy Placeholder when search is empty */
+                /* Friendly Search Placeholder */
                 <div className="p-8 text-center flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400">
                   <div className="w-12 h-12 rounded-2xl bg-mint-500/10 text-mint-500 flex items-center justify-center mb-3">
-                    <Lock className="w-6 h-6" />
+                    <Search className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                    Zero-PII Privacy Protection
+                  <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                    Find & Connect With Friends
                   </h3>
-                  <p className="text-[11px] text-zinc-400 mt-1 max-w-xs leading-relaxed">
-                    Loop never exposes member lists or phone numbers. Type an exact <strong>@username</strong> above to find and connect with friends.
+                  <p className="text-xs text-zinc-400 mt-1 max-w-xs leading-relaxed">
+                    Type a friend's <strong>@username</strong> above to send a request and start chatting!
                   </p>
                 </div>
               ) : users.length === 0 ? (
