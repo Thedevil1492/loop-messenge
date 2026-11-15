@@ -12,6 +12,7 @@ import { ChatHeader } from './components/Chat/ChatHeader.js';
 import { MessageList } from './components/Chat/MessageList.js';
 import { MessageInput } from './components/Chat/MessageInput.js';
 import { MediaLightbox } from './components/Chat/MediaLightbox.js';
+import { CallModal } from './components/Calls/CallModal.js';
 import { Avatar } from './components/UI/Avatar.js';
 import {
   MessageSquare,
@@ -40,6 +41,9 @@ export const App: React.FC = () => {
   const theme = useStore((state) => state.theme);
   const activeTab = useStore((state) => state.activeTab);
   const setActiveTab = useStore((state) => state.setActiveTab);
+  const receiveCall = useStore((state) => state.receiveCall);
+  const acceptCall = useStore((state) => state.acceptCall);
+  const endCall = useStore((state) => state.endCall);
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
@@ -146,6 +150,29 @@ export const App: React.FC = () => {
       setTyping(chatId, userId, isTyping);
     });
 
+    // Real-Time Encrypted Call Listeners
+    const unsubIncomingCall = socket.on('call:incoming', ({ fromUserId, callerName, callerAvatar, callType, chatId }) => {
+      receiveCall({
+        contactId: fromUserId,
+        contactName: callerName,
+        contactAvatar: callerAvatar,
+        callType,
+        chatId,
+      });
+    });
+
+    const unsubCallAccepted = socket.on('call:accepted', () => {
+      acceptCall();
+    });
+
+    const unsubCallDeclined = socket.on('call:declined', () => {
+      endCall();
+    });
+
+    const unsubCallEnded = socket.on('call:ended', () => {
+      endCall();
+    });
+
     return () => {
       isCurrent = false;
       unsubNewMsg();
@@ -153,6 +180,10 @@ export const App: React.FC = () => {
       unsubReceipt();
       unsubPresence();
       unsubTyping();
+      unsubIncomingCall();
+      unsubCallAccepted();
+      unsubCallDeclined();
+      unsubCallEnded();
       socket.disconnect();
     };
   }, [token, currentUser?.id, activeChatId]);
@@ -313,6 +344,9 @@ export const App: React.FC = () => {
 
       {/* Lightbox Modal */}
       <MediaLightbox />
+
+      {/* Real-Time Encrypted Call Modal */}
+      <CallModal />
     </div>
   );
 };

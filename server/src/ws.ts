@@ -320,6 +320,71 @@ export function setupWebSocketServer(httpServer: Server) {
             }
             break;
           }
+
+          // Real-time Audio/Video Call Signaling
+          case 'call:initiate': {
+            if (!ws.userId) return;
+            const { toUserId, callType, callerName, callerAvatar, chatId } = payload;
+            if (!toUserId) return;
+
+            broadcastToUser(toUserId, {
+              type: 'call:incoming',
+              payload: {
+                fromUserId: ws.userId,
+                callerName: callerName || 'Contact',
+                callerAvatar: callerAvatar || '',
+                callType: callType || 'AUDIO',
+                chatId,
+              },
+            });
+            break;
+          }
+
+          case 'call:accept': {
+            if (!ws.userId) return;
+            const { toUserId, chatId } = payload;
+            if (!toUserId) return;
+
+            broadcastToUser(toUserId, {
+              type: 'call:accepted',
+              payload: {
+                fromUserId: ws.userId,
+                chatId,
+              },
+            });
+            break;
+          }
+
+          case 'call:decline': {
+            if (!ws.userId) return;
+            const { toUserId, chatId, reason } = payload;
+            if (!toUserId) return;
+
+            broadcastToUser(toUserId, {
+              type: 'call:declined',
+              payload: {
+                fromUserId: ws.userId,
+                chatId,
+                reason: reason || 'declined',
+              },
+            });
+            break;
+          }
+
+          case 'call:end': {
+            if (!ws.userId) return;
+            const { toUserId, chatId } = payload;
+            if (!toUserId) return;
+
+            broadcastToUser(toUserId, {
+              type: 'call:ended',
+              payload: {
+                fromUserId: ws.userId,
+                chatId,
+              },
+            });
+            break;
+          }
         }
       } catch (err) {
         console.error('WebSocket message parsing error:', err);

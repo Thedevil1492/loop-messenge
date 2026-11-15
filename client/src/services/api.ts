@@ -172,4 +172,80 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Failed to upload file');
     return data;
   },
+
+  // Phone + OTP Authentication
+  async sendOtp(phone: string): Promise<{ success: boolean; message: string; code?: string }> {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send verification code');
+    return data;
+  },
+
+  async verifyOtp(payload: {
+    phone: string;
+    code: string;
+    displayName?: string;
+    username?: string;
+  }): Promise<{ token: string; user: User; isNewUser: boolean }> {
+    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Verification failed');
+    return data;
+  },
+
+  // Status Stories
+  async getStatusUpdates(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/status`, {
+      headers: getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch status updates');
+    return data.statuses || [];
+  },
+
+  async createStatusUpdate(text: string, mediaUrl?: string, bgColor?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/status`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ text, mediaUrl, bgColor }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to post status update');
+    return data.status;
+  },
+
+  // Call Logs
+  async getCallLogs(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/calls`, {
+      headers: getHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch call logs');
+    return data.calls || [];
+  },
+
+  async logCall(payload: {
+    receiverId: string;
+    chatId?: string;
+    type: 'AUDIO' | 'VIDEO';
+    status: 'MISSED' | 'COMPLETED' | 'DECLINED';
+    duration?: number;
+  }): Promise<{ success: boolean; callId: string }> {
+    const res = await fetch(`${API_BASE}/calls`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to log call');
+    return data;
+  },
 };

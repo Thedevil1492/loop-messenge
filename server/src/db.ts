@@ -178,13 +178,41 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_participants_user_id ON chat_participants(user_id);
       CREATE INDEX IF NOT EXISTS idx_receipts_message_id ON delivery_receipts(message_id);
 
-      -- Anonymous Zero-PII columns migration
+      -- Anonymous & Phone Zero-PII columns migration
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS anon_tag TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS public_key TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS seed_hash TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS persona_type TEXT DEFAULT 'PERSONAL';
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+      CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
       CREATE INDEX IF NOT EXISTS idx_users_anon_tag ON users(anon_tag);
       CREATE INDEX IF NOT EXISTS idx_users_seed_hash ON users(seed_hash);
+
+      -- Status Stories Table
+      CREATE TABLE IF NOT EXISTS status_updates (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT DEFAULT '',
+        media_url TEXT,
+        bg_color TEXT DEFAULT '#10b981',
+        created_at BIGINT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_status_user ON status_updates(user_id, created_at);
+
+      -- Call Logs Table
+      CREATE TABLE IF NOT EXISTS call_logs (
+        id TEXT PRIMARY KEY,
+        caller_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        chat_id TEXT REFERENCES chats(id) ON DELETE CASCADE,
+        type TEXT NOT NULL CHECK(type IN ('AUDIO', 'VIDEO')),
+        status TEXT NOT NULL CHECK(status IN ('MISSED', 'COMPLETED', 'DECLINED')),
+        duration INTEGER DEFAULT 0,
+        created_at BIGINT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_calls_receiver ON call_logs(receiver_id, created_at);
     `);
   } else {
     await db.exec(`
@@ -252,11 +280,41 @@ export async function initDatabase() {
     `);
 
     // Safe column additions for SQLite
+    try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN username TEXT;'); } catch {}
+    try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN phone TEXT;'); } catch {}
     try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN anon_tag TEXT;'); } catch {}
     try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN public_key TEXT;'); } catch {}
     try { sqliteDb!.exec('ALTER TABLE users ADD COLUMN seed_hash TEXT;'); } catch {}
     try { sqliteDb!.exec("ALTER TABLE users ADD COLUMN persona_type TEXT DEFAULT 'PERSONAL';"); } catch {}
+    try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);'); } catch {}
+    try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);'); } catch {}
     try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_anon_tag ON users(anon_tag);'); } catch {}
     try { sqliteDb!.exec('CREATE INDEX IF NOT EXISTS idx_users_seed_hash ON users(seed_hash);'); } catch {}
+
+    try {
+      sqliteDb!.exec(`
+        CREATE TABLE IF NOT EXISTS status_updates (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          text TEXT DEFAULT '',
+          media_url TEXT,
+          bg_color TEXT DEFAULT '#10b981',
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_status_user ON status_updates(user_id, created_at);
+
+        CREATE TABLE IF NOT EXISTS call_logs (
+          id TEXT PRIMARY KEY,
+          caller_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          receiver_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          chat_id TEXT REFERENCES chats(id) ON DELETE CASCADE,
+          type TEXT NOT NULL CHECK(type IN ('AUDIO', 'VIDEO')),
+          status TEXT NOT NULL CHECK(status IN ('MISSED', 'COMPLETED', 'DECLINED')),
+          duration INTEGER DEFAULT 0,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_calls_receiver ON call_logs(receiver_id, created_at);
+      `);
+    } catch {}
   }
 }

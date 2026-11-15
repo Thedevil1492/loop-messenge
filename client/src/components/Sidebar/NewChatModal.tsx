@@ -15,6 +15,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose }) =
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const setActiveChatId = useStore((state) => state.setActiveChatId);
+  const setChats = useStore((state) => state.setChats);
   const presence = useStore((state) => state.presence);
 
   useEffect(() => {
@@ -45,6 +46,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose }) =
   const handleStartChat = async (userId: string) => {
     try {
       const { chatId } = await api.createDirectChat(userId);
+      const updatedChats = await api.getChats();
+      setChats(updatedChats);
       setActiveChatId(chatId);
       onClose();
     } catch (err) {

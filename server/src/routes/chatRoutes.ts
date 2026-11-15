@@ -283,3 +283,102 @@ chatRouter.post('/chats/:chatId/read', requireAuth, async (req: AuthenticatedReq
 
   res.json({ success: true, timestamp: now });
 });
+
+// STATUS UPDATES (Stories)
+chatRouter.get('/status', requireAuth, async (_req: AuthenticatedRequest, res): Promise<void> => {
+  const since = Date.now() - 24 * 60 * 60 * 1000; // Last 24 hours
+  const rows = await db.all<{
+    id: string;
+    user_id: string;
+    text: string;
+    media_url: string | null;
+    bg_color: string;
+    created_at: number;
+    display_name: string;
+    avatar_url: string;
+    username: string | null;
+  }>(
+    `SELECT s.*, u.display_name, u.avatar_url, u.username
+     FROM status_updates s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.created_at >= ?
+     ORDER BY s.created_at DESC`,
+    [since]
+  );
+
+  res.json({ statuses: rows });
+});
+
+chatRouter.post('/status', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
+  const currentUserId = req.user!.id;
+  const { text, mediaUrl, bgColor } = req.body;
+
+  if (!text && !mediaUrl) {
+    res.status(400).json({ error: 'Status must include text or an image' });
+    return;
+  }
+
+  const statusId = crypto.randomUUID();
+  const now = Date.now();
+
+  await db.run(
+    `INSERT INTO status_updates (id, user_id, text, media_url, bg_color, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [statusId, currentUserId, text ? String(text).trim() : '', mediaUrl || null, bgColor || '#10b981', now]
+  );
+
+  res.status(201).json({
+    status: {
+      id: statusId,
+      user_id: currentUserId,
+      text: text ? String(text).trim() : '',
+      media_url: mediaUrl || null,
+      bg_color: bgColor || '#10b981',
+      created_at: now,
+      display_name: req.user!.display_name,
+      avatar_url: req.user!.avatar_url,
+      username: req.user!.username || null,
+    },
+  });
+});
+
+// CALL LOGS
+chatRouter.get('/calls', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
+  const currentUserId = req.user!.id;
+
+  const logs = await db.all(
+    `SELECT cl.*,
+            caller.display_name as caller_name, caller.avatar_url as caller_avatar,
+            receiver.display_name as receiver_name, receiver.avatar_url as receiver_avatar
+     FROM call_logs cl
+     JOIN users caller ON caller.id = cl.caller_id
+     JOIN users receiver ON receiver.id = cl.receiver_id
+     WHERE cl.caller_id = ? OR cl.receiver_id = ?
+     ORDER BY cl.created_at DESC
+     LIMIT 50`,
+    [currentUserId, currentUserId]
+  );
+
+  res.json({ calls: logs });
+});
+
+chatRouter.post('/calls', requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
+  const callerId = req.user!.id;
+  const { receiverId, chatId, type, status, duration } = req.body;
+
+  if (!receiverId || !type || !status) {
+    res.status(400).json({ error: 'Missing call logging parameters' });
+    return;
+  }
+
+  const callId = crypto.randomUUID();
+  const now = Date.now();
+
+  await db.run(
+    `INSERT INTO call_logs (id, caller_id, receiver_id, chat_id, type, status, duration, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [callId, callerId, receiverId, chatId || null, type, status, duration || 0, now]
+  );
+
+  res.status(201).json({ success: true, callId });
+});

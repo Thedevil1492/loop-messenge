@@ -56,6 +56,34 @@ interface StoreState {
   // Lightbox
   lightboxMedia: { url: string; type: 'IMAGE' | 'VIDEO'; name?: string } | null;
   setLightboxMedia: (media: { url: string; type: 'IMAGE' | 'VIDEO'; name?: string } | null) => void;
+
+  // Real-Time Calls
+  activeCall: {
+    isActive: boolean;
+    isIncoming: boolean;
+    contactId: string;
+    contactName: string;
+    contactAvatar: string;
+    callType: 'AUDIO' | 'VIDEO';
+    chatId?: string;
+    status: 'RINGING' | 'CONNECTED';
+  } | null;
+  startCall: (payload: {
+    contactId: string;
+    contactName: string;
+    contactAvatar: string;
+    callType: 'AUDIO' | 'VIDEO';
+    chatId?: string;
+  }) => void;
+  receiveCall: (call: {
+    contactId: string;
+    contactName: string;
+    contactAvatar: string;
+    callType: 'AUDIO' | 'VIDEO';
+    chatId?: string;
+  }) => void;
+  acceptCall: () => void;
+  endCall: () => void;
 }
 
 const savedUser = localStorage.getItem('loop_user');
@@ -220,4 +248,30 @@ export const useStore = create<StoreState>((set) => ({
   // Lightbox
   lightboxMedia: null,
   setLightboxMedia: (lightboxMedia) => set({ lightboxMedia }),
+
+  // Calls
+  activeCall: null,
+  startCall: (payload) =>
+    set({
+      activeCall: {
+        ...payload,
+        isActive: true,
+        isIncoming: false,
+        status: 'RINGING',
+      },
+    }),
+  receiveCall: (payload) =>
+    set({
+      activeCall: {
+        ...payload,
+        isActive: true,
+        isIncoming: true,
+        status: 'RINGING',
+      },
+    }),
+  acceptCall: () =>
+    set((state) => ({
+      activeCall: state.activeCall ? { ...state.activeCall, status: 'CONNECTED' } : null,
+    })),
+  endCall: () => set({ activeCall: null }),
 }));
