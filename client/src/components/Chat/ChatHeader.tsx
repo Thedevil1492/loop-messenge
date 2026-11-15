@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from '../../store/useStore.js';
 import { Avatar } from '../UI/Avatar.js';
-import { ArrowLeft, MoreVertical, Phone, Video, Users } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Phone, Video, ShieldCheck, Lock } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 
 export const ChatHeader: React.FC = () => {
@@ -67,12 +67,12 @@ export const ChatHeader: React.FC = () => {
   }
 
   return (
-    <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10 select-none">
-      <div className="flex items-center gap-3 min-w-0">
+    <div className="h-16 px-3 md:px-4 flex items-center justify-between border-b border-zinc-200 dark:border-obsidian-border bg-white/95 dark:bg-obsidian-card/95 backdrop-blur-md z-10 select-none transition-colors">
+      <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
         {/* Back button visible on mobile */}
         <button
           onClick={() => setActiveChatId(null)}
-          className="md:hidden p-1.5 -ml-1 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="md:hidden p-2 -ml-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-obsidian-surface transition active:scale-95"
           title="Back to Chats"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -80,15 +80,25 @@ export const ChatHeader: React.FC = () => {
 
         <Avatar src={avatar} name={title} size="md" isOnline={isOnline} />
 
-        <div className="min-w-0">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">{title}</h2>
+        <div className="min-w-0 flex flex-col justify-center">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+              {title}
+            </h2>
+            <span
+              className="text-mint-600 dark:text-mint-400 opacity-80 hover:opacity-100 transition cursor-help"
+              title="Loop Private End-to-End Encryption Active"
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </span>
+          </div>
           <p
             className={`text-xs truncate font-medium ${
               subtitle.includes('typing')
-                ? 'text-loop-600 dark:text-cyanAccent-400 animate-pulse'
+                ? 'text-mint-600 dark:text-mint-400 animate-pulse'
                 : subtitle === 'online'
-                ? 'text-emerald-500 dark:text-emerald-400'
-                : 'text-slate-400 dark:text-slate-500'
+                ? 'text-mint-600 dark:text-mint-400'
+                : 'text-zinc-400 dark:text-zinc-500'
             }`}
           >
             {subtitle}
@@ -96,21 +106,25 @@ export const ChatHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* Decorative / Future action placeholders */}
-      <div className="flex items-center gap-1 text-slate-400">
+      {/* Action buttons */}
+      <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
         <button
-          className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition opacity-60"
-          title="Voice Call (Later)"
-          disabled
+          className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-obsidian-surface hover:text-mint-600 dark:hover:text-mint-400 transition"
+          title="Start Audio Call"
         >
           <Phone className="w-4 h-4" />
         </button>
         <button
-          className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition opacity-60"
-          title="Video Call (Later)"
-          disabled
+          className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-obsidian-surface hover:text-mint-600 dark:hover:text-mint-400 transition"
+          title="Start Video Call"
         >
           <Video className="w-4 h-4" />
+        </button>
+        <button
+          className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-obsidian-surface hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+          title="Chat Options"
+        >
+          <MoreVertical className="w-4 h-4" />
         </button>
       </div>
     </div>

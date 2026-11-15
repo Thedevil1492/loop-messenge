@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { User, Chat, Message } from '../types.js';
+import type { User, Chat, Message, ActiveTab } from '../types.js';
 
 interface PresenceState {
   isOnline: boolean;
@@ -36,6 +36,18 @@ interface StoreState {
   // Typing: Record<chatId, Record<userId, boolean>>
   typing: Record<string, Record<string, boolean>>;
   setTyping: (chatId: string, userId: string, isTyping: boolean) => void;
+
+  // Active Tab for Mobile Bottom Nav
+  activeTab: ActiveTab;
+  setActiveTab: (tab: ActiveTab) => void;
+
+  // Quoted Reply
+  replyingToMessage: Message | null;
+  setReplyingToMessage: (msg: Message | null) => void;
+  setReplyingTo: (msg: Message | null) => void;
+
+  // Reactions
+  addReaction: (chatId: string, messageId: string, emoji: string, userId: string) => void;
 
   // Theme
   theme: 'dark' | 'light';
@@ -157,6 +169,38 @@ export const useStore = create<StoreState>((set) => ({
       return {
         typing: { ...state.typing, [chatId]: chatTyping },
       };
+    }),
+
+  // Active Tab
+  activeTab: 'CHATS',
+  setActiveTab: (activeTab) => set({ activeTab }),
+
+  // Reply
+  replyingToMessage: null,
+  setReplyingToMessage: (replyingToMessage) => set({ replyingToMessage }),
+  setReplyingTo: (replyingToMessage) => set({ replyingToMessage }),
+
+  // Add Reaction
+  addReaction: (chatId, messageId, emoji, userId) =>
+    set((state) => {
+      const chatMsgs = state.messages[chatId] || [];
+      const updated = chatMsgs.map((m) => {
+        if (m.id !== messageId) return m;
+        const currentReactions = { ...(m.reactions || {}) };
+        const usersForEmoji = new Set(currentReactions[emoji] || []);
+        if (usersForEmoji.has(userId)) {
+          usersForEmoji.delete(userId);
+        } else {
+          usersForEmoji.add(userId);
+        }
+        if (usersForEmoji.size === 0) {
+          delete currentReactions[emoji];
+        } else {
+          currentReactions[emoji] = Array.from(usersForEmoji);
+        }
+        return { ...m, reactions: currentReactions };
+      });
+      return { messages: { ...state.messages, [chatId]: updated } };
     }),
 
   // Theme

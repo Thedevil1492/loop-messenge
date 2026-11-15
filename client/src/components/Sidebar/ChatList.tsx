@@ -8,17 +8,18 @@ import {
   Search,
   MessageSquarePlus,
   Users,
-  Sun,
-  Moon,
-  LogOut,
-  ImageIcon,
-  Video,
-  FileText,
+  Camera,
+  X,
+  Sparkles,
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 
+type FilterType = 'ALL' | 'UNREAD' | 'DIRECT' | 'GROUPS';
+
 export const ChatList: React.FC = () => {
   const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('ALL');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
 
@@ -28,20 +29,25 @@ export const ChatList: React.FC = () => {
   const setActiveChatId = useStore((state) => state.setActiveChatId);
   const presence = useStore((state) => state.presence);
   const typing = useStore((state) => state.typing);
-  const theme = useStore((state) => state.theme);
-  const toggleTheme = useStore((state) => state.toggleTheme);
-  const logout = useStore((state) => state.logout);
 
   const filteredChats = chats.filter((c) => {
+    // 1. Text Search Filter
     const chatTitle =
       c.type === 'DIRECT'
         ? c.participants.find((p) => p.id !== currentUser?.id)?.display_name || 'Direct Chat'
         : c.name || 'Group';
     const lastContent = c.last_message?.content || '';
-    return (
+    const matchesSearch =
       chatTitle.toLowerCase().includes(search.toLowerCase()) ||
-      lastContent.toLowerCase().includes(search.toLowerCase())
-    );
+      lastContent.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    // 2. Chip Filter
+    if (activeFilter === 'UNREAD') return (c.unread_count || 0) > 0;
+    if (activeFilter === 'DIRECT') return c.type === 'DIRECT';
+    if (activeFilter === 'GROUPS') return c.type === 'GROUP';
+    return true;
   });
 
   const formatTimestamp = (ts: number) => {
@@ -53,200 +59,229 @@ export const ChatList: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 select-none">
-      {/* Top App / User Header */}
-      <div className="p-3.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Avatar
-            src={currentUser?.avatar_url}
-            name={currentUser?.display_name || 'Me'}
-            size="md"
-            className="ring-2 ring-loop-500/20"
-          />
-          <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-              <span>{currentUser?.display_name}</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" title="Online" />
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              {currentUser?.bio || 'Looping in private'}
-            </p>
+    <div className="w-full h-full flex flex-col bg-white dark:bg-obsidian-card border-r border-slate-200 dark:border-obsidian-border select-none">
+      {/* Top Brand & Actions Header */}
+      <div className="p-3.5 px-4 flex items-center justify-between border-b border-slate-100 dark:border-obsidian-border bg-white dark:bg-obsidian-card">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-mint-500/15 dark:bg-mint-500/20 text-mint-600 dark:text-mint-400 flex items-center justify-center font-bold">
+            <svg viewBox="0 0 100 100" className="w-5 h-5 fill-none stroke-current" strokeWidth="11">
+              <path d="M 32 38 C 22 38 18 46 18 50 C 18 56 24 64 34 64 C 44 64 52 50 56 46 C 60 42 66 36 74 36 C 82 36 86 44 86 50 C 86 56 80 64 70 64 C 60 64 54 52 50 48 C 46 44 40 38 32 38 Z" />
+            </svg>
           </div>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Loop
+          </h1>
         </div>
 
-        {/* Action icons */}
-        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+        {/* Right Top Actions (WhatsApp Style) */}
+        <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
           <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            className="p-2 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 transition"
+            onClick={() => alert('Camera: Take photo or video')}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-obsidian-surface transition"
+            title="Camera"
           >
-            {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-slate-600" />
-            )}
+            <Camera className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-obsidian-surface transition"
+            title="Search"
+          >
+            <Search className="w-5 h-5" />
           </button>
           <button
             onClick={() => setIsNewChatOpen(true)}
-            title="New 1:1 Chat"
-            className="p-2 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 hover:text-loop-500 transition"
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-obsidian-surface text-mint-600 dark:text-mint-400 transition"
+            title="New Conversation"
           >
-            <MessageSquarePlus className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsNewGroupOpen(true)}
-            title="New Group Chat"
-            className="p-2 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 hover:text-loop-500 transition"
-          >
-            <Users className="w-4 h-4" />
-          </button>
-          <button
-            onClick={logout}
-            title="Sign Out"
-            className="p-2 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-500 transition"
-          >
-            <LogOut className="w-4 h-4" />
+            <MessageSquarePlus className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="p-3 border-b border-slate-100 dark:border-slate-800/80">
+      {/* Inline Search Bar (Expands or Persistent) */}
+      <div className={`px-3 pt-2 pb-2 transition-all ${isSearchOpen || search ? 'block' : 'block'}`}>
         <div className="relative flex items-center">
-          <Search className="w-4 h-4 absolute left-3.5 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 text-zinc-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search conversations..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-loop-500"
+            placeholder="Search or start new chat"
+            className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100 dark:bg-obsidian-surface text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1.5 focus:ring-mint-500 border border-transparent dark:border-obsidian-border"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100/80 dark:divide-slate-800/40">
+      {/* WhatsApp Filter Chips Row */}
+      <div className="px-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-obsidian-border">
+        {(['ALL', 'UNREAD', 'DIRECT', 'GROUPS'] as FilterType[]).map((filter) => {
+          const isActive = activeFilter === filter;
+          const labels: Record<FilterType, string> = {
+            ALL: 'All',
+            UNREAD: 'Unread',
+            DIRECT: 'Direct',
+            GROUPS: 'Groups',
+          };
+
+          return (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-mint-500/15 dark:bg-mint-500/25 text-mint-700 dark:text-mint-300 font-semibold'
+                  : 'bg-slate-100 dark:bg-obsidian-surface text-zinc-500 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-800'
+              }`}
+            >
+              {labels[filter]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Conversation List Stream */}
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-100/60 dark:divide-obsidian-border/50">
         {filteredChats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center text-slate-400">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 text-slate-400">
+          <div className="flex flex-col items-center justify-center p-8 text-center text-zinc-400">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-obsidian-surface flex items-center justify-center mb-3 text-zinc-400">
               <MessageSquarePlus className="w-6 h-6" />
             </div>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              No conversations yet
+            <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              No conversations found
             </p>
-            <p className="text-[11px] text-slate-400 mt-1 max-w-[200px]">
+            <p className="text-[11px] text-zinc-400 mt-1 max-w-[200px]">
               Tap the new chat button above to connect with a contact.
             </p>
           </div>
         ) : (
           filteredChats.map((chat) => {
-            const isActive = activeChatId === chat.id;
+            const isDirect = chat.type === 'DIRECT';
+            const otherUser = isDirect
+              ? chat.participants.find((p) => p.id !== currentUser?.id)
+              : null;
+            const chatTitle = isDirect
+              ? otherUser?.display_name || 'Direct Chat'
+              : chat.name || 'Group';
+            const chatAvatar = isDirect ? otherUser?.avatar_url : chat.avatar_url;
 
-            // Compute recipient or group details
-            let title = chat.name || 'Group';
-            let avatar = chat.avatar_url;
-            let isOnline: boolean | undefined = undefined;
+            // Presence
+            const userPresence = otherUser ? presence[otherUser.id] : null;
+            const isOnline = otherUser
+              ? userPresence
+                ? userPresence.isOnline
+                : !!otherUser.is_online
+              : false;
 
-            if (chat.type === 'DIRECT') {
-              const otherUser = chat.participants.find((p) => p.id !== currentUser?.id);
-              if (otherUser) {
-                title = otherUser.display_name;
-                avatar = otherUser.avatar_url;
-                const p = presence[otherUser.id];
-                isOnline = p ? p.isOnline : !!otherUser.is_online;
-              }
-            }
-
-            // Check if someone in this chat is typing
+            // Typing
             const chatTypers = typing[chat.id];
-            const isPeerTyping =
-              chatTypers && Object.keys(chatTypers).some((uid) => uid !== currentUser?.id && chatTypers[uid]);
+            const isTyping =
+              chatTypers &&
+              Object.keys(chatTypers).some((uid) => uid !== currentUser?.id && chatTypers[uid]);
 
+            const isActive = activeChatId === chat.id;
             const lastMsg = chat.last_message;
-            const isOutgoing = lastMsg && lastMsg.sender_id === currentUser?.id;
+            const isOutgoing = lastMsg?.sender_id === currentUser?.id;
 
             return (
-              <button
+              <div
                 key={chat.id}
                 onClick={() => setActiveChatId(chat.id)}
-                className={`w-full flex items-center gap-3 p-3.5 transition text-left ${
+                className={`flex items-center gap-3.5 px-3.5 py-3 cursor-pointer transition-colors relative ${
                   isActive
-                    ? 'bg-loop-50 dark:bg-slate-800/90 border-l-4 border-loop-600'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    ? 'bg-slate-100 dark:bg-obsidian-surface border-l-3 border-mint-500'
+                    : 'hover:bg-slate-50 dark:hover:bg-obsidian-surface/60'
                 }`}
               >
-                <Avatar src={avatar} name={title} size="md" isOnline={isOnline} />
+                {/* Avatar with Verified Presence Indicator */}
+                <Avatar
+                  src={chatAvatar}
+                  name={chatTitle}
+                  size="md"
+                  isOnline={isDirect ? isOnline : undefined}
+                />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                      {title}
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate pr-2">
+                      {chatTitle}
                     </h3>
-                    {lastMsg && (
-                      <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap ml-2">
-                        {formatTimestamp(lastMsg.created_at)}
-                      </span>
-                    )}
+                    <span
+                      className={`text-[11px] whitespace-nowrap ${
+                        (chat.unread_count || 0) > 0
+                          ? 'text-mint-600 dark:text-mint-400 font-semibold'
+                          : 'text-zinc-400 dark:text-zinc-500'
+                      }`}
+                    >
+                      {formatTimestamp(chat.updated_at)}
+                    </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1.5 min-w-0 text-xs text-slate-500 dark:text-slate-400 truncate">
-                      {isPeerTyping ? (
-                        <span className="text-loop-600 dark:text-cyanAccent-400 font-medium italic animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 min-w-0 pr-2">
+                      {isTyping ? (
+                        <p className="text-xs text-mint-600 dark:text-mint-400 font-medium truncate animate-pulse">
                           typing...
-                        </span>
-                      ) : lastMsg ? (
-                        <>
-                          {isOutgoing && (
-                            <DeliveryTicks status={lastMsg.delivery_status} className="flex-shrink-0" />
-                          )}
-                          {chat.type === 'GROUP' && !isOutgoing && lastMsg.sender_name && (
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
-                              {lastMsg.sender_name.split(' ')[0]}:
-                            </span>
-                          )}
-                          {lastMsg.type === 'IMAGE' && (
-                            <span className="flex items-center gap-1 italic">
-                              <ImageIcon className="w-3.5 h-3.5" /> Photo
-                            </span>
-                          )}
-                          {lastMsg.type === 'VIDEO' && (
-                            <span className="flex items-center gap-1 italic">
-                              <Video className="w-3.5 h-3.5" /> Video
-                            </span>
-                          )}
-                          {lastMsg.type === 'DOCUMENT' && (
-                            <span className="flex items-center gap-1 italic">
-                              <FileText className="w-3.5 h-3.5" /> Document
-                            </span>
-                          )}
-                          {lastMsg.type === 'TEXT' && (
-                            <span className="truncate">{lastMsg.content}</span>
-                          )}
-                        </>
+                        </p>
                       ) : (
-                        <span className="text-slate-400 italic">No messages</span>
+                        <>
+                          {isOutgoing && lastMsg && (
+                            <DeliveryTicks
+                              status={lastMsg.delivery_status}
+                              className={lastMsg.delivery_status === 'READ' ? 'text-sky-400' : 'text-zinc-400'}
+                            />
+                          )}
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                            {lastMsg?.type === 'IMAGE'
+                              ? '📷 Photo'
+                              : lastMsg?.type === 'VIDEO'
+                              ? '🎥 Video'
+                              : lastMsg?.type === 'DOCUMENT'
+                              ? '📄 Document'
+                              : lastMsg?.type === 'AUDIO'
+                              ? '🎤 Voice note'
+                              : lastMsg?.content || 'No messages yet'}
+                          </p>
+                        </>
                       )}
                     </div>
 
-                    {/* Unread badge */}
-                    {chat.unread_count > 0 && (
-                      <span className="flex-shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-loop-600 text-white text-[11px] font-bold flex items-center justify-center shadow-sm shadow-loop-600/30">
+                    {/* Unread Badge Pill */}
+                    {(chat.unread_count || 0) > 0 && (
+                      <span className="bg-mint-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 shadow-xs flex-shrink-0">
                         {chat.unread_count}
                       </span>
                     )}
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })
         )}
       </div>
 
+      {/* Floating Action Button (FAB) on Mobile */}
+      <div className="md:hidden fixed bottom-20 right-4 z-20">
+        <button
+          onClick={() => setIsNewChatOpen(true)}
+          className="w-14 h-14 rounded-2xl bg-mint-500 hover:bg-mint-600 text-white flex items-center justify-center shadow-lg shadow-mint-500/30 transition transform active:scale-95"
+          title="New Chat"
+        >
+          <MessageSquarePlus className="w-6 h-6" />
+        </button>
+      </div>
+
       {/* Modals */}
-      <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} />
-      <NewGroupModal isOpen={isNewGroupOpen} onClose={() => setIsNewGroupOpen(false)} />
+      {isNewChatOpen && <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} />}
+      {isNewGroupOpen && <NewGroupModal isOpen={isNewGroupOpen} onClose={() => setIsNewGroupOpen(false)} />}
     </div>
   );
 };

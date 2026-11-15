@@ -5,24 +5,34 @@ export default {
   theme: {
     extend: {
       colors: {
-        loop: {
-          50: '#f0f5ff',
-          100: '#e0ebff',
-          200: '#c7dbfe',
-          300: '#a0c2fe',
-          400: '#709ffd',
-          500: '#4376fb',
-          600: '#2b5bf4',
-          700: '#2045e1',
-          800: '#1e38b6',
-          900: '#1e348f',
-          950: '#142057',
+        obsidian: {
+          bg: '#09090b',
+          card: '#121215',
+          surface: '#18181b',
+          border: '#27272a',
+          hover: '#27272a',
+          muted: '#71717a',
         },
-        cyanAccent: {
-          400: '#22d3ee',
-          500: '#06b6d4',
-          600: '#0891b2',
+        mint: {
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          400: '#34d399',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
         },
+        bubble: {
+          outDark: '#064e3b',
+          outLight: '#dcfce7',
+          inDark: '#18181b',
+          inLight: '#ffffff',
+        },
+      },
+      borderRadius: {
+        'bubble': '18px',
       },
     },
   },

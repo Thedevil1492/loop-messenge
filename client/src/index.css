@@ -6,12 +6,16 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
+  body {
+    @apply bg-slate-50 text-zinc-900 dark:bg-obsidian-bg dark:text-zinc-100 font-sans antialiased;
+    overflow-x: hidden;
+  }
 }
 
-/* Custom modern scrollbars */
+/* Subtle modern minimalist scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -19,12 +23,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(113, 113, 122, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(113, 113, 122, 0.45);
 }
 
 @keyframes fadeIn {
@@ -41,7 +45,7 @@
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -54,5 +58,5 @@
 }
 
 .animate-slide-up {
-  animation: slideUp 0.15s ease-out forwards;
+  animation: slideUp 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
